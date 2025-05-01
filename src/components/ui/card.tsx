@@ -9,7 +9,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-lg border bg-card text-card-foreground shadow-sm", // Keep shadow-sm as default, can override with props
+      "rounded-xl border bg-card text-card-foreground shadow-md transition-shadow duration-300 hover:shadow-lg", // Adjusted radius, default shadow, hover effect
       className
     )}
     {...props}
@@ -23,7 +23,7 @@ const CardHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex flex-col space-y-1.5 p-6", className)} // Kept p-6 as default
+    className={cn("flex flex-col space-y-2 p-6", className)} // Increased default space-y
     {...props}
   />
 ))
@@ -36,7 +36,7 @@ const CardTitle = React.forwardRef<
   <p // Use <p> by default
     ref={ref}
     className={cn(
-      "text-xl font-semibold leading-none tracking-tight", // Adjusted default size
+      "text-xl font-semibold leading-tight tracking-tight", // Adjusted leading
       className
     )}
     {...props}
@@ -60,7 +60,7 @@ const CardContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} /> // Kept p-6 as default
+  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
 ))
 CardContent.displayName = "CardContent"
 
@@ -70,7 +70,7 @@ const CardFooter = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex items-center p-6 pt-0", className)} // Kept p-6 as default
+    className={cn("flex items-center p-6 pt-4", className)} // Reduced top padding for footer
     {...props}
   />
 ))

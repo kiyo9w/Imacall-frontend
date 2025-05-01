@@ -4,166 +4,186 @@
 
 @layer base {
   :root {
-    --background: 240 6% 96%; /* Slightly darker light gray */
-    --foreground: 240 10% 3.9%; /* Dark Gray for text */
+    /* Light Theme - Clean, Bright, Professional */
+    --background: 0 0% 100%; /* White */
+    --foreground: 240 10% 3.9%; /* Dark Gray */
 
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card: 0 0% 100%; /* White */
+    --card-foreground: 240 10% 3.9%; /* Dark Gray */
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%; /* White */
+    --popover-foreground: 240 10% 3.9%; /* Dark Gray */
 
-    --primary: 180 90% 30%; /* Slightly brighter dark teal */
-    --primary-foreground: 0 0% 98%; /* White text on primary */
+    --primary: 190 85% 40%; /* Vibrant Cyan/Teal */
+    --primary-foreground: 0 0% 99%; /* Almost White */
 
-    --secondary: 240 5% 93%; /* Slightly adjusted secondary gray */
-    --secondary-foreground: 240 5.9% 10%;
+    --secondary: 220 10% 96%; /* Very Light Gray/Blue */
+    --secondary-foreground: 240 6% 10%; /* Dark Gray */
 
-    --muted: 240 5% 90%; /* Muted gray - slightly adjusted */
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted: 220 10% 91%; /* Light Gray/Blue */
+    --muted-foreground: 240 4% 46%; /* Medium Gray */
 
-    --accent: 16 100% 60%; /* Slightly adjusted coral */
-    --accent-foreground: 0 0% 9%; /* Dark text on accent */
+    --accent: 260 80% 65%; /* Soft Violet */
+    --accent-foreground: 0 0% 99%; /* Almost White */
 
-    --destructive: 0 75% 55%; /* Adjusted destructive red */
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 75% 60%; /* Clear Red */
+    --destructive-foreground: 0 0% 99%; /* Almost White */
 
-    --border: 240 5% 88%; /* Adjusted border color */
-    --input: 240 5% 90%; /* Adjusted input background */
-    --ring: 180 90% 35%; /* Teal for focus rings - adjusted */
+    --border: 220 10% 88%; /* Light Gray Border */
+    --input: 220 10% 94%; /* Input background slightly off-white */
+    --ring: 190 80% 45%; /* Slightly darker cyan for focus rings */
 
-    --radius: 0.75rem; /* Increased border radius */
+    --radius: 0.75rem; /* Slightly larger radius for modern feel */
 
-    /* Chart colors remain, adjust if needed for specific charts */
-    --chart-1: 180 76% 31%;
-    --chart-2: 16 80% 59%;
-    --chart-3: 200 80% 40%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+    /* Chart colors */
+    --chart-1: 190 76% 35%; /* Cyan */
+    --chart-2: 260 70% 60%; /* Violet */
+    --chart-3: 220 70% 55%; /* Blue */
+    --chart-4: 40 90% 60%; /* Orange */
+    --chart-5: 140 60% 50%; /* Green */
 
-    /* Sidebar theme - adjusted for consistency */
-    --sidebar-background: 0 0% 100%; /* Match card background */
-    --sidebar-foreground: 240 10% 3.9%; /* Match card foreground */
-    --sidebar-border: 240 5% 88%; /* Match border */
-    --sidebar-primary: 180 90% 30%; /* Match primary */
-    --sidebar-primary-foreground: 0 0% 98%; /* Match primary foreground */
-    --sidebar-accent: 180 5% 94%; /* Subtle accent - light teal/gray */
-    --sidebar-accent-foreground: 180 90% 30%; /* Primary color for text */
-    --sidebar-ring: 180 90% 35%; /* Match ring */
+    /* Sidebar - Light */
+    --sidebar-background: 220 15% 98%; /* Very light gray/blue, slightly darker than page */
+    --sidebar-foreground: 240 10% 3.9%;
+    --sidebar-border: 220 10% 88%;
+    --sidebar-primary: 190 85% 40%;
+    --sidebar-primary-foreground: 0 0% 99%;
+    --sidebar-accent: 190 20% 92%; /* Very light cyan accent */
+    --sidebar-accent-foreground: 190 85% 35%; /* Darker cyan for text on accent */
+    --sidebar-ring: 190 80% 45%;
   }
 
   .dark {
-    /* Adjusted dark theme for better contrast and consistency */
-    --background: 240 10% 4%; /* Darker background */
-    --foreground: 0 0% 98%; /* Light text */
+    /* Dark Theme - Modern, Sleek, Techy */
+    --background: 240 10% 6%; /* Very Dark Blue/Gray */
+    --foreground: 210 20% 98%; /* Almost White */
 
-    --card: 240 5% 9%; /* Slightly lighter card */
-    --card-foreground: 0 0% 98%;
+    --card: 240 8% 10%; /* Slightly Lighter Dark Blue/Gray */
+    --card-foreground: 210 20% 98%;
 
-    --popover: 240 5% 9%; /* Match card */
-    --popover-foreground: 0 0% 98%;
+    --popover: 240 8% 10%;
+    --popover-foreground: 210 20% 98%;
 
-    --primary: 180 80% 45%; /* Brighter teal for dark mode */
-    --primary-foreground: 0 0% 100%; /* White text */
+    --primary: 190 80% 55%; /* Brighter Cyan/Teal */
+    --primary-foreground: 240 10% 5%; /* Very Dark Text */
 
-    --secondary: 240 4% 12%; /* Adjusted secondary */
-    --secondary-foreground: 0 0% 90%; /* Lighter secondary text */
+    --secondary: 240 6% 15%; /* Darker Gray/Blue */
+    --secondary-foreground: 210 15% 90%; /* Lighter Gray Text */
 
-    --muted: 240 4% 12%; /* Match secondary */
-    --muted-foreground: 240 4% 55%; /* Adjusted muted text */
+    --muted: 240 6% 15%;
+    --muted-foreground: 210 10% 65%; /* Medium Gray Text */
 
-    --accent: 16 90% 65%; /* Brighter coral for dark mode */
-    --accent-foreground: 0 0% 9%; /* Dark text on accent */
+    --accent: 260 75% 70%; /* Brighter Violet */
+    --accent-foreground: 240 10% 5%; /* Very Dark Text */
 
-    --destructive: 0 70% 50%; /* Adjusted destructive red */
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 70% 65%; /* Slightly Brighter Red */
+    --destructive-foreground: 0 0% 99%;
 
-    --border: 240 4% 15%; /* Adjusted border */
-    --input: 240 4% 12%; /* Adjusted input */
-    --ring: 180 80% 50%; /* Brighter teal ring */
+    --border: 240 5% 20%; /* Darker Border */
+    --input: 240 5% 18%; /* Darker Input Background */
+    --ring: 190 75% 60%; /* Brighter Cyan Ring */
 
-    /* Chart colors for dark mode */
-    --chart-1: 180 70% 50%;
-    --chart-2: 16 70% 55%;
-    --chart-3: 200 70% 50%;
-    --chart-4: 43 70% 60%;
-    --chart-5: 27 75% 60%;
+    /* Chart colors */
+    --chart-1: 190 70% 50%;
+    --chart-2: 260 65% 65%;
+    --chart-3: 220 65% 60%;
+    --chart-4: 40 80% 65%;
+    --chart-5: 140 55% 55%;
 
-    /* Sidebar theme for dark mode */
-    --sidebar-background: 240 5% 9%; /* Match card background */
-    --sidebar-foreground: 0 0% 98%; /* Match card foreground */
-    --sidebar-border: 240 4% 15%; /* Match border */
-    --sidebar-primary: 180 80% 45%; /* Match primary */
-    --sidebar-primary-foreground: 0 0% 100%; /* Match primary foreground */
-    --sidebar-accent: 240 4% 18%; /* Subtle dark accent */
-    --sidebar-accent-foreground: 180 80% 45%; /* Primary color for text */
-    --sidebar-ring: 180 80% 50%; /* Match ring */
+    /* Sidebar - Dark */
+    --sidebar-background: 240 8% 8%; /* Very dark base */
+    --sidebar-foreground: 210 20% 98%;
+    --sidebar-border: 240 5% 20%;
+    --sidebar-primary: 190 80% 55%;
+    --sidebar-primary-foreground: 240 10% 5%;
+    --sidebar-accent: 190 15% 18%; /* Dark cyan accent */
+    --sidebar-accent-foreground: 190 75% 60%; /* Brighter cyan text on accent */
+    --sidebar-ring: 190 75% 60%;
   }
 }
 
 @layer base {
   * {
-    @apply border-border; /* Use the theme variable for borders */
+    @apply border-border;
+    /* Smooth scrolling behavior */
+    scroll-behavior: smooth;
+  }
+  html {
+      /* Apply subtle gradient background */
+      @apply bg-gradient-to-br from-background via-secondary/30 to-background;
+      min-height: 100%; /* Ensure gradient covers full height */
   }
   body {
-    @apply bg-background text-foreground;
-    /* Use the CSS variable provided by geist/font/sans or Inter */
-    font-family: var(--font-inter), system-ui, sans-serif; /* Fallback fonts */
+    @apply bg-transparent text-foreground; /* Make body background transparent to see html gradient */
+    font-family: var(--font-inter), system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    @apply overflow-x-hidden; /* Prevent horizontal scroll */
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold tracking-tight text-foreground; /* Ensure heading color uses foreground */
+    @apply font-bold tracking-tight text-foreground; /* Use bold for stronger hierarchy */
   }
 
-  h1 { @apply text-3xl lg:text-4xl; } /* Responsive heading sizes */
-  h2 { @apply text-2xl lg:text-3xl; }
-  h3 { @apply text-xl lg:text-2xl; }
-  h4 { @apply text-lg lg:text-xl; }
+  h1 { @apply text-3xl md:text-4xl lg:text-5xl; } /* Slightly larger headings */
+  h2 { @apply text-2xl md:text-3xl lg:text-4xl; }
+  h3 { @apply text-xl md:text-2xl lg:text-3xl; }
+  h4 { @apply text-lg md:text-xl lg:text-2xl; }
 
-  /* Add subtle transitions to common elements */
+  /* Smooth transitions for interactive elements */
   button, a, input, textarea, select {
-    @apply transition-colors duration-200 ease-in-out;
+    @apply transition-all duration-200 ease-in-out;
   }
   button, a {
      @apply transition-transform duration-150 ease-in-out;
      &:hover:not(:disabled) {
-        /* @apply scale-[1.02]; */ /* Optional subtle scale on hover */
+        @apply brightness-110; /* Subtle brightness increase on hover */
      }
      &:active:not(:disabled) {
-       @apply scale-[0.98]; /* Subtle press effect */
+       @apply scale-[0.97] brightness-95; /* Slightly more pronounced press effect */
      }
   }
+
+  /* Improve focus states for accessibility and visual feedback */
+   *:focus-visible {
+       @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+   }
 }
 
 /* Custom scrollbar styling */
 @layer utilities {
-  /* For Webkit browsers (Chrome, Safari) */
+  /* Webkit */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 10px; /* Slightly wider scrollbar */
+    height: 10px;
   }
 
   ::-webkit-scrollbar-track {
-    background: hsl(var(--background));
+    background: hsl(var(--background) / 0.5); /* Semi-transparent track */
     border-radius: 10px;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted));
+    background: hsl(var(--muted) / 0.8); /* Use muted color for thumb */
     border-radius: 10px;
-    border: 2px solid hsl(var(--background)); /* Creates padding around thumb */
+    border: 2px solid transparent; /* No border needed with transparent track */
+    background-clip: content-box; /* Keep border inside thumb */
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground));
+    background: hsl(var(--muted-foreground) / 0.9);
   }
 
-  /* For Firefox */
-  /* Firefox support is limited, can use basic color */
+  /* Firefox */
   * {
-    scrollbar-width: thin;
-    scrollbar-color: hsl(var(--muted)) hsl(var(--background));
+    scrollbar-width: auto; /* Firefox default */
+    scrollbar-color: hsl(var(--muted) / 0.8) hsl(var(--background) / 0.5); /* Match thumb and track */
+  }
+}
+
+/* Add some basic page transition */
+@layer utilities {
+  .page-transition {
+    @apply animate-in fade-in duration-300;
   }
 }

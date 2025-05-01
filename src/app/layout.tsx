@@ -4,8 +4,7 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { Header } from '@/components/layout/Header';
 import { AuthProvider } from '@/contexts/AuthContext';
-// FirebaseProvider is no longer used
-// import { FirebaseProvider } from '@/contexts/FirebaseContext'; // Import FirebaseProvider
+import { ThemeProvider } from '@/components/theme-provider'; // Import ThemeProvider
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' }); // Configure Inter font
 
@@ -20,23 +19,29 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // suppressHydrationWarning is often needed when using themes/dark mode
+    // suppressHydrationWarning is needed for next-themes
     <html lang="en" className={inter.variable} suppressHydrationWarning>
-      <body className={`font-sans flex flex-col min-h-screen antialiased`}> {/* Simplified classes */}
-        {/* Remove FirebaseProvider wrapper */}
-        <AuthProvider> {/* Wrap with AuthProvider */}
-          <Header />
-          {/* flex-1 ensures main content pushes footer down */}
-          <main className="flex-grow flex flex-col container mx-auto px-4 py-8">
-            {children}
-          </main>
-          {/* Optional: Add a simple footer */}
-          <footer className="py-4 text-center text-xs text-muted-foreground border-t bg-card">
-            © {new Date().getFullYear()} Imacall. All rights reserved.
-          </footer>
-          <Toaster />
-        </AuthProvider>
-      </body>
+       <body className={`font-sans flex flex-col min-h-screen antialiased`}> {/* Simplified classes */}
+         <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+         >
+             <AuthProvider> {/* Wrap with AuthProvider */}
+               <Header />
+               {/* flex-1 ensures main content pushes footer down */}
+               <main className="flex-grow flex flex-col container mx-auto px-4 py-8 page-transition"> {/* Added page transition class */}
+                 {children}
+               </main>
+               {/* Optional: Add a simple footer */}
+               <footer className="py-6 text-center text-xs text-muted-foreground border-t bg-card/50 backdrop-blur-sm"> {/* Slightly styled footer */}
+                 © {new Date().getFullYear()} Imacall. All rights reserved.
+               </footer>
+               <Toaster />
+             </AuthProvider>
+         </ThemeProvider>
+       </body>
     </html>
   );
 }
