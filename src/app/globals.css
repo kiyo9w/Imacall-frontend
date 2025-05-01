@@ -5,7 +5,7 @@
 @layer base {
   :root {
     /* Light Theme - Clean, Bright, Professional */
-    --background: 0 0% 100%; /* White */
+    --background: 0 0% 98%; /* Slightly off-white */
     --foreground: 240 10% 3.9%; /* Dark Gray */
 
     --card: 0 0% 100%; /* White */
@@ -51,6 +51,11 @@
     --sidebar-accent: 190 20% 92%; /* Very light cyan accent */
     --sidebar-accent-foreground: 190 85% 35%; /* Darker cyan for text on accent */
     --sidebar-ring: 190 80% 45%;
+
+    /* Animated Background Gradient Stops */
+    --gradient-start: hsl(220, 15%, 97%); /* Lighter */
+    --gradient-mid: hsl(190, 20%, 95%); /* Cyan hint */
+    --gradient-end: hsl(260, 20%, 97%); /* Violet hint */
   }
 
   .dark {
@@ -99,6 +104,11 @@
     --sidebar-accent: 190 15% 18%; /* Dark cyan accent */
     --sidebar-accent-foreground: 190 75% 60%; /* Brighter cyan text on accent */
     --sidebar-ring: 190 75% 60%;
+
+    /* Animated Background Gradient Stops - Dark */
+    --gradient-start: hsl(240, 10%, 8%); /* Darker base */
+    --gradient-mid: hsl(190, 30%, 12%); /* Dark Cyan hint */
+    --gradient-end: hsl(260, 25%, 10%); /* Dark Violet hint */
   }
 }
 
@@ -109,12 +119,13 @@
     scroll-behavior: smooth;
   }
   html {
-      /* Apply subtle gradient background */
-      @apply bg-gradient-to-br from-background via-secondary/30 to-background;
-      min-height: 100%; /* Ensure gradient covers full height */
+      /* Use transparent to allow body gradient to show through */
+      @apply bg-transparent;
+      min-height: 100%; /* Ensure covers full height */
   }
   body {
-    @apply bg-transparent text-foreground; /* Make body background transparent to see html gradient */
+    /* Apply the animated gradient here */
+    @apply bg-gradient-body text-foreground animate-gradient-bg;
     font-family: var(--font-inter), system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -131,7 +142,7 @@
   h4 { @apply text-lg md:text-xl lg:text-2xl; }
 
   /* Smooth transitions for interactive elements */
-  button, a, input, textarea, select {
+  button, a, input, textarea, select, label {
     @apply transition-all duration-200 ease-in-out;
   }
   button, a {
@@ -142,6 +153,11 @@
      &:active:not(:disabled) {
        @apply scale-[0.97] brightness-95; /* Slightly more pronounced press effect */
      }
+  }
+  input, textarea, select {
+      &:hover:not(:disabled) {
+          @apply border-primary/50; /* Highlight border on hover */
+      }
   }
 
   /* Improve focus states for accessibility and visual feedback */
@@ -181,9 +197,20 @@
   }
 }
 
-/* Add some basic page transition */
+/* Add keyframes for gradient background animation */
 @layer utilities {
-  .page-transition {
-    @apply animate-in fade-in duration-300;
-  }
+    .bg-gradient-body {
+      background: linear-gradient(-45deg, hsl(var(--gradient-start)), hsl(var(--gradient-mid)), hsl(var(--gradient-end)), hsl(var(--gradient-mid)));
+      background-size: 400% 400%;
+    }
+
+    .animate-gradient-bg {
+      animation: gradient-move 25s ease infinite;
+    }
+
+    @keyframes gradient-move {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
 }

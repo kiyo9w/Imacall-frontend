@@ -137,7 +137,7 @@ export default function ProfilePage() {
    const isLoading = authLoading || isSubmitting || loadingSubmit;
 
   return (
-    <Card className="w-full max-w-2xl mx-auto shadow-xl border-border/80">
+    <Card className="w-full max-w-2xl mx-auto shadow-xl border-border/60"> {/* Use border/60 */}
       <CardHeader>
         <CardTitle className="text-2xl font-bold flex items-center gap-2">
              <UserIcon className="h-6 w-6 text-primary"/>
@@ -176,7 +176,7 @@ export default function ProfilePage() {
          ) : (
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               {/* Avatar and basic info display */}
-              <div className="flex items-center space-x-6 p-4 bg-gradient-to-r from-card to-secondary/20 rounded-lg border">
+              <div className="flex items-center space-x-6 p-4 bg-gradient-to-r from-card to-secondary/10 dark:to-secondary/5 rounded-lg border border-border/60"> {/* Added space */}
                 <Avatar className="h-20 w-20 border-2 border-background shadow-md">
                    {/* Assuming no user avatar URL from API */}
                   {/* <AvatarImage src={user.avatarUrl} alt={user.full_name ?? 'User'} /> */}
@@ -216,7 +216,7 @@ export default function ProfilePage() {
                   readOnly
                   disabled={isLoading} // Still disable appearance if form is submitting
                   className={cn(
-                      "bg-muted/50 cursor-not-allowed border-dashed", // Style to indicate read-only
+                      "bg-muted/50 cursor-not-allowed border-dashed border-border/50", // Style to indicate read-only
                       errors.email ? 'border-destructive' : ''
                   )}
                   autoComplete="email"
@@ -235,7 +235,7 @@ export default function ProfilePage() {
          )}
       </CardContent>
        {!authLoading && user && (
-           <CardFooter className="border-t pt-6 flex justify-end">
+           <CardFooter className="border-t pt-6 flex justify-end border-border/60"> {/* Use border/60 */}
                  <Button variant="outline" asChild size="sm">
                     <Link href="/account/settings">
                         Change Password or Settings
