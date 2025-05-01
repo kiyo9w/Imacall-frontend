@@ -33,10 +33,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setLoading(false);
       return;
     }
-    // No need to setLoading(true) here if we only call this when we already have a token
-    // setLoading(true);
     try {
-      apiClient.defaults.headers.common['Authorization'] = `Bearer ${currentToken}`; // Set header for this request
+      // Header is now set globally via interceptor if token exists
+      // apiClient.defaults.headers.common['Authorization'] = `Bearer ${currentToken}`;
       const response = await apiClient.get<UserPublic>('/users/me');
       setUser(response.data);
     } catch (error) {
@@ -46,28 +45,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setToken(null);
       delete apiClient.defaults.headers.common['Authorization']; // Clear header in axios instance
 
-      // Optionally redirect if the error indicates an invalid token
        if (axios.isAxiosError(error) && error.response?.status === 401) {
-         // Redirect only if not already on a public page
          const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password', '/'];
          if (!publicPaths.includes(pathname)) {
              toast({ title: "Session expired", description: "Please log in again.", variant: "destructive"});
-             // Use replace to avoid adding the failed page to history
              router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
          }
        }
     } finally {
-      // setLoading(false); // Loading should be false once initial check is done
+       // Initial loading is handled in the useEffect below
     }
   }, [token, router, pathname, toast]); // Add router and pathname as dependencies
 
   // Effect to check for token on initial load
   useEffect(() => {
     const storedToken = localStorage.getItem('accessToken');
-    console.log("Initial token check:", storedToken);
+    console.log("AuthContext: Initial token check:", storedToken ? "Token found" : "No token");
     if (storedToken) {
       setToken(storedToken);
-      fetchUser(storedToken).finally(() => setLoading(false)); // Set loading false after fetch attempt
+      // Set the header immediately for subsequent requests
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+      fetchUser(storedToken).finally(() => setLoading(false)); // Fetch user and then set loading false
     } else {
       setLoading(false); // No token, stop loading
     }
@@ -79,32 +77,34 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setLoading(true);
     try {
       // Use x-www-form-urlencoded for OAuth2 password flow
-      const loginUrl = `${apiClient.defaults.baseURL}/login/access-token`;
-      console.log("Attempting login to:", loginUrl); // Log the full URL being hit
+      const loginUrl = `/login/access-token`; // Relative path is fine
+      console.log(`AuthContext: Attempting login POST to ${apiClient.defaults.baseURL}${loginUrl}`);
 
       const response = await apiClient.post<Token>(
-        '/login/access-token',
-        data, // FormData handles the encoding
-        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+        loginUrl,
+        data, // FormData will be correctly encoded by axios
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } } // Explicitly set header for this request
       );
       const { access_token } = response.data;
       localStorage.setItem('accessToken', access_token);
       setToken(access_token);
-      apiClient.defaults.headers.common['Authorization'] = `Bearer ${access_token}`; // Set header for future requests
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${access_token}`; // Update header in axios instance
       await fetchUser(access_token); // Fetch user data after successful login
       toast({ title: "Login Successful", description: "Welcome back!" });
       // Redirect is handled by the page component using searchParams
     } catch (error) {
-       console.error('Login failed:', error);
-        // Check specifically for Network Error
+       console.error('AuthContext: Login failed:', error);
+       // Check specifically for Network Error -> likely CORS
         if (axios.isAxiosError(error) && error.message === 'Network Error') {
-            console.error("Network Error during login. Check backend server status and CORS configuration.");
-            throw new Error("Network Error: Could not connect to the server. Please ensure the backend is running and allows requests from this origin (CORS).");
+            console.error("AuthContext: Network Error during login. This is likely a CORS issue or the backend is unreachable from the browser. Check backend CORS setup allows this frontend origin.");
+            throw new Error("Network Error: Could not connect to the server. Please ensure the backend is running and allows requests from this origin (CORS). See browser console and API client file for details.");
         } else if (axios.isAxiosError(error) && (error.response?.status === 400 || error.response?.status === 401)) {
              // FastAPI default for invalid credentials in OAuth2PasswordBearer is 401, but templates might use 400.
              throw new Error("Invalid email or password.");
          } else {
-            throw new Error("An unexpected error occurred during login.");
+            // Catchall for other errors
+            const errorMsg = axios.isAxiosError(error) ? error.response?.data?.detail || error.message : 'An unexpected error occurred during login.';
+            throw new Error(errorMsg);
          }
     } finally {
       setLoading(false);
@@ -114,36 +114,43 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
    const register = async (data: any) => {
      setLoading(true);
      try {
-       console.log("Attempting registration to:", `${apiClient.defaults.baseURL}/users/signup`);
-       await apiClient.post<UserPublic>('/users/signup', data);
-       // After successful registration, log the user in
+       const signupUrl = `/users/signup`;
+       console.log(`AuthContext: Attempting registration POST to ${apiClient.defaults.baseURL}${signupUrl}`);
+       // Backend expects JSON for signup
+       await apiClient.post<UserPublic>(signupUrl, data, { headers: { 'Content-Type': 'application/json' } });
+
+       // After successful registration, automatically log the user in
        const loginData = new FormData();
        loginData.append('username', data.email); // FastAPI OAuth2 expects 'username'
        loginData.append('password', data.password);
        loginData.append('grant_type', 'password'); // Required by FastAPI OAuth2 form
+
+       console.log("AuthContext: Registration successful, attempting automatic login.");
        await login(loginData); // Login automatically after registration
-       // Toast for login success is handled within login() now
-       // toast({ title: "Registration Successful", description: "Welcome to Imacall!"});
+       // Toast for login success is handled within login()
      } catch (error) {
-        console.error('Registration failed:', error);
+        console.error('AuthContext: Registration failed:', error);
+        // Handle Network Error -> likely CORS
          if (axios.isAxiosError(error) && error.message === 'Network Error') {
-             console.error("Network Error during registration. Check backend server status and CORS configuration.");
-             throw new Error("Network Error: Could not connect to the server for registration. Ensure the backend is running and allows requests from this origin (CORS).");
+             console.error("AuthContext: Network Error during registration. This is likely a CORS issue or the backend is unreachable from the browser. Check backend CORS setup allows this frontend origin.");
+             throw new Error("Network Error: Could not connect to the server for registration. Ensure the backend is running and allows requests from this origin (CORS). See browser console and API client file for details.");
          } else if (axios.isAxiosError(error) && error.response?.status === 400) {
-            // Example: Check for specific error messages from backend if available
-             if (error.response.data?.detail?.includes("already exists")) {
+            // Check for specific backend error messages
+             if (error.response.data?.detail?.includes("already exists") || error.response.data?.detail?.includes("already registered")) {
                 throw new Error("Email already registered. Please login.");
              } else {
-                // General validation error from backend (e.g., password too short)
+                // General validation error from backend
                  throw new Error(error.response.data?.detail || "Registration validation failed.");
              }
          } else if (axios.isAxiosError(error) && error.response?.status === 422) {
-              // Handle validation errors if backend returns 422
+              // Handle detailed validation errors if backend returns 422
                const errorDetail = error.response.data?.detail?.[0];
                const errorMessage = errorDetail ? `${errorDetail.loc.join('.')} - ${errorDetail.msg}` : "Invalid registration data.";
                throw new Error(errorMessage);
          }
-         throw new Error("Registration failed. Please try again.");
+         // Catchall for other errors
+         const errorMsg = axios.isAxiosError(error) ? error.message : 'Registration failed. Please try again.';
+         throw new Error(errorMsg);
      } finally {
        setLoading(false);
      }
@@ -151,6 +158,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 
   const logout = async () => {
+    console.log("AuthContext: Logging out.");
     setLoading(true);
     // No backend endpoint for logout usually needed with JWT, just clear client-side
     localStorage.removeItem('accessToken');
