@@ -14,6 +14,9 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Star, Search, Filter, ArrowUpDown, ArrowDown, ArrowUp, Bot, Loader2 } from 'lucide-react';
 import { useDebounce } from '@/hooks/use-debounce'; // Simple debounce hook
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Import Alert components
+import { AlertCircle } from 'lucide-react'; // Import AlertCircle icon
+
 
 const CATEGORIES: CharacterCategory[] = ['Fantasy', 'Sci-Fi', 'Historical', 'Anime', 'Celebrity', 'Game Character', 'Assistant', 'Custom'];
 const CHARS_PER_PAGE = 12;
@@ -251,26 +254,3 @@ export default function CharactersPage() {
         </div>
     );
 }
-
-// Dummy useDebounce hook (replace with a proper implementation if needed)
-import { useState, useEffect } from 'react';
-
-export function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-}
-
-
-// Import AlertCircle if not already imported elsewhere
-import { AlertCircle } from 'lucide-react';
