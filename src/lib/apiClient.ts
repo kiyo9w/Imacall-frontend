@@ -2,11 +2,11 @@ import axios from 'axios';
 
 // Ensure this matches your deployed backend URL.
 // It's recommended to use environment variables for this.
-const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://imacall-wxtz785oca-uc.a.run.app';
+const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://imacall-backend.onrender.com';
 
 // Check if the backend URL is set correctly
 if (!baseURL) {
-  console.error("Error: NEXT_PUBLIC_API_BASE_URL is not defined. Please set it in your .env.local file.");
+  console.error("Error: NEXT_PUBLIC_API_BASE_URL is not defined. Please set it in your .env.local file or ensure the default is correct.");
 }
 
 const apiClient = axios.create({
