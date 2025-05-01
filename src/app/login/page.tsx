@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation'; // Import useSearchParams
 import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,6 +26,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams(); // Get search params
   const auth = getAuth(app);
   const googleProvider = new GoogleAuthProvider();
 
@@ -33,15 +34,27 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
+   // Determine redirect path, default to '/'
+   const redirectPath = searchParams.get('redirect') || '/';
+
   const onSubmit: SubmitHandler<LoginFormInputs> = async (data) => {
     setError(null);
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, data.email, data.password);
-      router.push('/'); // Redirect to homepage on successful login
+      router.push(redirectPath); // Use the redirect path
     } catch (err: any) {
       console.error('Login Error:', err);
-      setError(err.message || 'Failed to login. Please check your credentials.');
+      // Map common Firebase auth errors to user-friendly messages
+        let errorMessage = 'Failed to login. Please check your credentials.';
+        if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+            errorMessage = 'Invalid email or password.';
+        } else if (err.code === 'auth/invalid-email') {
+            errorMessage = 'Please enter a valid email address.';
+        } else if (err.code === 'auth/too-many-requests') {
+            errorMessage = 'Too many login attempts. Please try again later.';
+        }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -52,10 +65,16 @@ export default function LoginPage() {
      setLoading(true);
      try {
        await signInWithPopup(auth, googleProvider);
-       router.push('/'); // Redirect to homepage on successful login
+       router.push(redirectPath); // Use the redirect path
      } catch (err: any) {
        console.error('Google Sign-In Error:', err);
-       setError(err.message || 'Failed to sign in with Google.');
+        let errorMessage = 'Failed to sign in with Google.';
+        if (err.code === 'auth/popup-closed-by-user') {
+            errorMessage = 'Google Sign-In cancelled.';
+        } else if (err.code === 'auth/cancelled-popup-request' || err.code === 'auth/popup-blocked') {
+            errorMessage = 'Google Sign-In popup was blocked or cancelled. Please allow popups for this site.';
+        }
+       setError(errorMessage);
      } finally {
        setLoading(false);
      }
@@ -66,7 +85,7 @@ export default function LoginPage() {
     <div className="flex justify-center items-center py-12">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Login to EchoVerse</CardTitle>
+          <CardTitle className="text-2xl">Login to Imacall</CardTitle> {/* Updated App Name */}
           <CardDescription>Access your account or create a new one.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -87,6 +106,7 @@ export default function LoginPage() {
                 {...register('email')}
                 className={errors.email ? 'border-destructive' : ''}
                 disabled={loading}
+                autoComplete="email" // Add autocomplete
               />
               {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
             </div>
@@ -99,6 +119,7 @@ export default function LoginPage() {
                 {...register('password')}
                 className={errors.password ? 'border-destructive' : ''}
                  disabled={loading}
+                 autoComplete="current-password" // Add autocomplete
               />
               {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
             </div>

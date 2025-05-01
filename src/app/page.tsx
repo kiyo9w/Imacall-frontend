@@ -6,14 +6,14 @@ export default function Home() {
   return (
     <div className="flex flex-col items-center justify-center text-center py-16">
       <Image
-         data-ai-hint="logo robot character"
-         src="https://picsum.photos/seed/echologo/150/150"
-         alt="EchoVerse Logo"
+         data-ai-hint="logo robot character call center"
+         src="https://picsum.photos/seed/imacalllogo/150/150"
+         alt="Imacall Logo"
          width={150}
          height={150}
          className="rounded-full mb-6 shadow-md"
       />
-      <h1 className="text-4xl font-bold mb-4 text-primary">Welcome to EchoVerse</h1>
+      <h1 className="text-4xl font-bold mb-4 text-primary">Welcome to Imacall</h1> {/* Updated App Name */}
       <p className="text-lg text-muted-foreground mb-8 max-w-xl">
         Create, discover, and interact with unique AI characters through text and voice. Explore a universe of personalities waiting to chat.
       </p>

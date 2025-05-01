@@ -10,6 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Save, Bell, AlertCircle, CheckCircle } from 'lucide-react';
 import { doc, getDoc, setDoc, DocumentReference, DocumentData } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'; // Import Alert components
+
 
 interface NotificationPreferences {
     newCharacterApproved: boolean;
@@ -64,7 +66,7 @@ export default function SettingsPage() {
         } else if (!authLoading) {
             setLoading(false); // Not logged in, stop loading
         }
-    }, [user, authLoading, settingsDocRef]);
+    }, [user, authLoading, settingsDocRef]); // Include settingsDocRef dependency
 
     const handlePreferenceChange = (key: keyof NotificationPreferences, value: boolean) => {
         setPreferences(prev => ({ ...prev, [key]: value }));
@@ -133,7 +135,7 @@ export default function SettingsPage() {
         <Card className="w-full max-w-lg mx-auto shadow-lg">
             <CardHeader>
                 <CardTitle className="text-2xl flex items-center gap-2"><Bell className="h-6 w-6 text-primary"/> Notification Settings</CardTitle>
-                <CardDescription>Manage how you receive notifications from EchoVerse.</CardDescription>
+                <CardDescription>Manage how you receive notifications from Imacall.</CardDescription> {/* Updated App Name */}
             </CardHeader>
             <CardContent className="space-y-6">
                  {error && (

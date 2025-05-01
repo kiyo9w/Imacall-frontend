@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation'; // Import useSearchParams
 import { getAuth, createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -27,12 +27,16 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams(); // Get search params
   const auth = getAuth(app);
-   const googleProvider = new GoogleAuthProvider();
+  const googleProvider = new GoogleAuthProvider();
 
   const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormInputs>({
     resolver: zodResolver(registerSchema),
   });
+
+   // Determine redirect path, default to '/'
+   const redirectPath = searchParams.get('redirect') || '/';
 
   const onSubmit: SubmitHandler<RegisterFormInputs> = async (data) => {
     setError(null);
@@ -43,10 +47,18 @@ export default function RegisterPage() {
       await updateProfile(userCredential.user, {
         displayName: data.displayName,
       });
-      router.push('/'); // Redirect to homepage on successful registration
+      router.push(redirectPath); // Redirect to originally intended page or homepage
     } catch (err: any) {
       console.error('Registration Error:', err);
-      setError(err.message || 'Failed to register. Please try again.');
+        let errorMessage = 'Failed to register. Please try again.';
+        if (err.code === 'auth/email-already-in-use') {
+            errorMessage = 'This email address is already registered. Try logging in instead.';
+        } else if (err.code === 'auth/invalid-email') {
+            errorMessage = 'Please enter a valid email address.';
+        } else if (err.code === 'auth/weak-password') {
+            errorMessage = 'Password is too weak. It must be at least 6 characters long.';
+        }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -59,10 +71,16 @@ export default function RegisterPage() {
        await signInWithPopup(auth, googleProvider);
        // Check if user is new or existing - Firebase handles this automatically.
        // If new, their Google name is used. Profile can be edited later.
-       router.push('/'); // Redirect to homepage on successful login/registration
+       router.push(redirectPath); // Redirect to originally intended page or homepage
      } catch (err: any) {
        console.error('Google Sign-In Error:', err);
-       setError(err.message || 'Failed to sign in with Google.');
+       let errorMessage = 'Failed to sign in with Google.';
+       if (err.code === 'auth/popup-closed-by-user') {
+           errorMessage = 'Google Sign-In cancelled.';
+       } else if (err.code === 'auth/cancelled-popup-request' || err.code === 'auth/popup-blocked') {
+            errorMessage = 'Google Sign-In popup was blocked or cancelled. Please allow popups for this site.';
+        }
+       setError(errorMessage);
      } finally {
        setLoading(false);
      }
@@ -74,7 +92,7 @@ export default function RegisterPage() {
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Create an Account</CardTitle>
-          <CardDescription>Join EchoVerse today!</CardDescription>
+          <CardDescription>Join Imacall today!</CardDescription> {/* Updated App Name */}
         </CardHeader>
         <CardContent>
           {error && (
@@ -94,6 +112,7 @@ export default function RegisterPage() {
                 {...register('displayName')}
                 className={errors.displayName ? 'border-destructive' : ''}
                 disabled={loading}
+                autoComplete="name" // Add autocomplete
               />
               {errors.displayName && <p className="text-sm text-destructive">{errors.displayName.message}</p>}
             </div>
@@ -106,6 +125,7 @@ export default function RegisterPage() {
                 {...register('email')}
                 className={errors.email ? 'border-destructive' : ''}
                  disabled={loading}
+                 autoComplete="email" // Add autocomplete
               />
               {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
             </div>
@@ -118,6 +138,7 @@ export default function RegisterPage() {
                 {...register('password')}
                 className={errors.password ? 'border-destructive' : ''}
                  disabled={loading}
+                 autoComplete="new-password" // Add autocomplete
               />
               {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
             </div>

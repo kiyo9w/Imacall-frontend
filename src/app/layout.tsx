@@ -1,13 +1,15 @@
 import type { Metadata } from 'next';
-import { GeistSans } from 'geist/font/sans'; // Using Geist Sans as the modern font
+import { Inter } from 'next/font/google'; // Using Inter font
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { Header } from '@/components/layout/Header';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { FirebaseProvider } from '@/contexts/FirebaseContext'; // Added FirebaseProvider
 
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' }); // Configure Inter font
+
 export const metadata: Metadata = {
-  title: 'EchoVerse',
+  title: 'Imacall', // Updated App Name
   description: 'Create, discover, and interact with AI characters.',
 };
 
@@ -17,8 +19,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={GeistSans.variable}> {/* Apply font variable to html tag */}
-      <body className={`antialiased font-sans flex flex-col min-h-screen`}> {/* Remove font variable class from body, font-sans uses it */}
+    <html lang="en" className={inter.variable}> {/* Apply font variable to html tag */}
+      <body className={`antialiased font-sans flex flex-col min-h-screen`}> {/* Use font-sans */}
         <FirebaseProvider> {/* Wrap with FirebaseProvider */}
           <AuthProvider> {/* Wrap with AuthProvider */}
             <Header />

@@ -29,7 +29,7 @@ export function Header() {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="text-2xl font-bold text-primary flex items-center gap-2">
            <Bot className="h-6 w-6" /> {/* Minimalist Icon */}
-          EchoVerse
+          Imacall {/* Updated App Name */}
         </Link>
         <nav className="flex items-center gap-4">
           <Button variant="ghost" asChild>
