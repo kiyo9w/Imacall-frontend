@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, ChangeEvent } from 'react';
@@ -31,7 +32,7 @@ const characterFormSchema = z.object({
     scenario: z.string().max(1000, 'Scenario cannot exceed 1000 characters').optional(),
     category: z.nativeEnum(CharacterCategory),
     language: z.string().max(10, 'Language code too long (e.g., en, es-MX)').optional(),
-    tags: z.string().optional().transform(val => val ? val.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0) : []), // Transform comma-separated string to array
+    tags: z.string().optional(), // Keep as string for form input, transform on submit
     // voiceId will be added later
 });
 
@@ -66,7 +67,7 @@ export function CharacterForm({ mode, existingCharacter }: CharacterFormProps) {
         scenario: existingCharacter?.scenario || '',
         category: existingCharacter?.category || undefined, // Let zod handle if undefined
         language: existingCharacter?.language || '',
-        tags: existingCharacter?.tags || [],
+        tags: existingCharacter?.tags?.join(', ') || '', // Join array to string for input
     };
 
     const { register, handleSubmit, control, setValue, watch, formState: { errors, isDirty } } = useForm<CharacterFormInputs>({
@@ -139,11 +140,19 @@ export function CharacterForm({ mode, existingCharacter }: CharacterFormProps) {
         setLoading(true);
         setError(null);
 
+         // Transform tags string to array before saving
+         const tagsArray = data.tags
+           ? data.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+           : []; // Default to empty array if undefined/empty
+
+
         try {
             let finalImageUrl: string | null | undefined = mode === 'edit' ? existingCharacter?.imageUrl : undefined;
 
             // Logic for Create
             if (mode === 'create') {
+                 // Prepare data, excluding the raw tags string and including the processed array
+                const { tags, ...restOfData } = data;
                 const characterData: Omit<Character, 'id' | 'createdAt' | 'updatedAt' | 'imageUrl'> & { createdAt: Timestamp, updatedAt: Timestamp } = {
                     userId: user.uid,
                     creatorType: 'User', // Assuming user creation for now
@@ -151,7 +160,8 @@ export function CharacterForm({ mode, existingCharacter }: CharacterFormProps) {
                     isPublic: false, // Default to private
                     createdAt: serverTimestamp() as Timestamp,
                     updatedAt: serverTimestamp() as Timestamp,
-                    ...data,
+                    ...restOfData, // Spread other validated fields
+                    tags: tagsArray, // Use the processed array
                     // Fields not in form yet
                     popularityScore: 0,
                     ratingCount: 0,
@@ -182,9 +192,11 @@ export function CharacterForm({ mode, existingCharacter }: CharacterFormProps) {
                       // TODO: Optionally delete old image from storage here
                  }
 
-
-                const updateData: Partial<Character> & { updatedAt: Timestamp } = {
-                    ...data,
+                 // Prepare data, excluding the raw tags string and including the processed array
+                 const { tags, ...restOfData } = data;
+                 const updateData: Partial<Character> & { updatedAt: Timestamp } = {
+                    ...restOfData, // Spread other validated fields
+                    tags: tagsArray, // Use the processed array
                     imageUrl: finalImageUrl, // Update with new or removed URL
                     updatedAt: serverTimestamp() as Timestamp,
                      // Reset status to Pending if editing a Rejected character
@@ -334,26 +346,12 @@ export function CharacterForm({ mode, existingCharacter }: CharacterFormProps) {
 
                      <div className="space-y-2">
                          <Label htmlFor="tags">Tags (Optional, comma-separated)</Label>
-                          {/* Use Controller to manage transformation */}
-                        <Controller
-                             name="tags"
-                             control={control}
-                             defaultValue={[]} // Ensure default is array
-                             render={({ field }) => (
-                                 <Input
-                                     id="tags"
-                                     placeholder="e.g., friendly, knowledgeable, wizard"
-                                     // Convert array back to string for input display
-                                     value={Array.isArray(field.value) ? field.value.join(', ') : ''}
-                                     onChange={(e) => {
-                                         // Update the form state with the processed array
-                                         const tagsArray = e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag);
-                                         field.onChange(tagsArray); // Store as array
-                                     }}
-                                     disabled={loading}
-                                     className={errors.tags ? 'border-destructive' : ''}
-                                 />
-                             )}
+                         <Input
+                             id="tags"
+                             placeholder="e.g., friendly, knowledgeable, wizard"
+                             {...register('tags')}
+                             disabled={loading}
+                             className={errors.tags ? 'border-destructive' : ''}
                          />
                          {errors.tags && <p className="text-sm text-destructive">{typeof errors.tags.message === 'string' ? errors.tags.message : 'Invalid tags format'}</p>}
                          <p className="text-xs text-muted-foreground">Helps users find your character.</p>
@@ -378,3 +376,4 @@ export function CharacterForm({ mode, existingCharacter }: CharacterFormProps) {
         </Card>
     );
 }
+
