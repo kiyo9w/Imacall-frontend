@@ -1,0 +1,69 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // User Settings: Allow users to read/write their own settings
+    match /userSettings/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Characters:
+    // - Allow anyone to read approved and public characters.
+    // - Allow authenticated users to create characters.
+    // - Allow owners to read/update/delete their characters.
+    // - Admins (not explicitly defined here, add role checks if needed) can manage all.
+    match /characters/{characterId} {
+      // Read: Public & Approved OR Owner
+      allow read: if resource.data.isPublic == true && resource.data.status == 'Approved'
+                  || (request.auth != null && request.auth.uid == resource.data.userId);
+
+      // Create: Authenticated users
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+
+      // Update: Owner can update (respecting status rules - enforced client-side/functions)
+      allow update: if request.auth != null && request.auth.uid == resource.data.userId;
+                   // Add checks here if specific fields shouldn't be updated by user, e.g. status directly to 'Approved'
+                   // Example: && !(request.resource.data.status == 'Approved' && resource.data.status != 'Approved')
+
+      // Delete: Owner can delete
+      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
+    // Reviews:
+    // - Allow anyone to read reviews for a character (assuming character is public).
+    // - Allow authenticated users to create reviews.
+    // - Allow review owner to delete their review (optional).
+    match /reviews/{reviewId} {
+      // Read: Allow reads (consider linking to character's public status if needed)
+      allow read: if true; // Or check character public status: get(/databases/$(database)/documents/characters/$(resource.data.characterId)).data.isPublic == true
+
+      // Create: Authenticated users, ensure rating is valid
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId
+                    && request.resource.data.rating >= 1 && request.resource.data.rating <= 5;
+
+      // Update: Generally disallow updates to reviews
+      allow update: if false;
+
+      // Delete: Allow owner to delete (optional)
+      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
+    // Chat Messages:
+    // - Allow users involved in the session (user sending/receiving) to read/write.
+    // - Session ID format is assumed: user1Id_user2Id or userUID_characterId
+    match /chatMessages/{messageId} {
+        // Read, Create: Only allow if the requesting user's ID is part of the session ID OR matches the userId field
+       allow read, create: if request.auth != null &&
+                           (request.auth.uid == resource.data.userId || request.auth.uid == request.resource.data.userId);
+                           // If sessionId structure is userA_userB, you might need:
+                           // request.auth.uid in resource.data.sessionId.split('_')
+
+       // Update, Delete: Usually disallowed for chat messages
+       allow update, delete: if false; // Or allow deletion by owner: request.auth.uid == resource.data.userId
+    }
+
+    // Add rules for other collections if they exist (e.g., 'users' for profile data if separate)
+
+  }
+}
