@@ -43,7 +43,7 @@ interface CharacterFormProps {
     existingCharacter?: Character; // Provided in edit mode
 }
 
-const CATEGORIES: CharacterCategory[] = ['Fantasy', 'Sci-Fi', 'Historical', 'Anime', 'Celebrity', 'Game Character', 'Assistant', 'Custom'];
+const CATEGORIES = Object.values(CharacterCategory);
 
 
 export function CharacterForm({ mode, existingCharacter }: CharacterFormProps) {
@@ -147,7 +147,7 @@ export function CharacterForm({ mode, existingCharacter }: CharacterFormProps) {
                 const characterData: Omit<Character, 'id' | 'createdAt' | 'updatedAt' | 'imageUrl'> & { createdAt: Timestamp, updatedAt: Timestamp } = {
                     userId: user.uid,
                     creatorType: 'User', // Assuming user creation for now
-                    status: 'Pending', // Default status for new submissions
+                    status: 'Pending' as CharacterStatus, // Default status for new submissions
                     isPublic: false, // Default to private
                     createdAt: serverTimestamp() as Timestamp,
                     updatedAt: serverTimestamp() as Timestamp,

@@ -4,7 +4,16 @@ import type { Timestamp } from 'firebase/firestore';
 export type CharacterStatus = 'Draft' | 'Pending' | 'Approved' | 'Rejected';
 
 // Categories for characters
-export type CharacterCategory = 'Fantasy' | 'Sci-Fi' | 'Historical' | 'Anime' | 'Celebrity' | 'Game Character' | 'Assistant' | 'Custom';
+export enum CharacterCategory {
+    FANTASY = 'Fantasy',
+    SCI_FI = 'Sci-Fi',
+    HISTORICAL = 'Historical',
+    ANIME = 'Anime',
+    CELEBRITY = 'Celebrity',
+    GAME_CHARACTER = 'Game Character',
+    ASSISTANT = 'Assistant',
+    CUSTOM = 'Custom'
+}
 
 // Basic character data structure (V1 + initial V2 fields)
 export interface Character {

@@ -18,7 +18,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // 
 import { AlertCircle } from 'lucide-react'; // Import AlertCircle icon
 
 
-const CATEGORIES: CharacterCategory[] = ['Fantasy', 'Sci-Fi', 'Historical', 'Anime', 'Celebrity', 'Game Character', 'Assistant', 'Custom'];
+const CATEGORIES = Object.values(CharacterCategory);
 const CHARS_PER_PAGE = 12;
 
 export default function CharactersPage() {
