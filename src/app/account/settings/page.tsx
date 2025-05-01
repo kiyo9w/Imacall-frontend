@@ -1,132 +1,95 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import apiClient from '@/lib/apiClient';
+import { useForm, SubmitHandler } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input'; // Use Input for password
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, Bell, AlertCircle, CheckCircle } from 'lucide-react';
-import { doc, getDoc, setDoc, DocumentReference, DocumentData } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'; // Import Alert components
+import { Loader2, Save, Lock, AlertCircle, CheckCircle } from 'lucide-react'; // Use Lock icon
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import axios from 'axios'; // For error handling
 
+// Schema for updating password (matches UpdatePassword schema)
+const passwordChangeSchema = z.object({
+  current_password: z.string().min(1, 'Current password is required'),
+  new_password: z.string().min(8, 'New password must be at least 8 characters'),
+  confirmPassword: z.string(),
+}).refine((data) => data.new_password === data.confirmPassword, {
+  message: "New passwords don't match",
+  path: ['confirmPassword'],
+});
 
-interface NotificationPreferences {
-    newCharacterApproved: boolean;
-    characterRejected: boolean;
-    newReviewReceived: boolean; // V2 feature
-    // Add more preferences as needed
-}
+type PasswordChangeInputs = z.infer<typeof passwordChangeSchema>;
 
 export default function SettingsPage() {
     const { user, loading: authLoading } = useAuth();
     const { toast } = useToast();
-    const [preferences, setPreferences] = useState<NotificationPreferences>({
-        newCharacterApproved: true,
-        characterRejected: true,
-        newReviewReceived: true, // Default V2 preference
-    });
-    const [loading, setLoading] = useState(true); // Loading state for fetching/saving
-    const [saving, setSaving] = useState(false); // Specific state for save button
+    const [loading, setLoading] = useState(false); // Specific state for save button
     const [error, setError] = useState<string | null>(null);
-    const [hasChanges, setHasChanges] = useState(false);
 
-    // Reference to the user's settings document
-    const settingsDocRef = user ? doc(db, 'userSettings', user.uid) : null;
+     const { register, handleSubmit, reset, formState: { errors } } = useForm<PasswordChangeInputs>({
+        resolver: zodResolver(passwordChangeSchema),
+     });
 
-    // Fetch preferences on mount
-    useEffect(() => {
-        const fetchPreferences = async () => {
-            if (!settingsDocRef) return;
-            setLoading(true);
-            setError(null);
-            try {
-                const docSnap = await getDoc(settingsDocRef);
-                if (docSnap.exists()) {
-                    // Merge fetched data with defaults to handle potentially missing fields
-                    const fetchedData = docSnap.data() as Partial<NotificationPreferences>;
-                    setPreferences(prev => ({ ...prev, ...fetchedData }));
-                } else {
-                    // No settings found, use defaults (already set in state)
-                    console.log("No notification settings found, using defaults.");
-                }
-            } catch (err) {
-                console.error("Error fetching notification settings:", err);
-                setError("Failed to load your notification settings.");
-            } finally {
-                setLoading(false);
-                setHasChanges(false); // Reset changes state after loading
-            }
-        };
+    const handlePasswordChange: SubmitHandler<PasswordChangeInputs> = async (data) => {
+        if (!user) return; // Should be handled by ProtectedRoute
 
-        if (user && !authLoading) {
-            fetchPreferences();
-        } else if (!authLoading) {
-            setLoading(false); // Not logged in, stop loading
-        }
-    }, [user, authLoading, settingsDocRef]); // Include settingsDocRef dependency
-
-    const handlePreferenceChange = (key: keyof NotificationPreferences, value: boolean) => {
-        setPreferences(prev => ({ ...prev, [key]: value }));
-        setHasChanges(true);
-    };
-
-    const handleSaveChanges = async () => {
-        if (!settingsDocRef || !hasChanges) return;
-        setSaving(true);
+        setLoading(true);
         setError(null);
+
         try {
-            // Use setDoc with merge: true to create or update the document
-            await setDoc(settingsDocRef, preferences, { merge: true });
+            // Call the API to update password
+            await apiClient.patch('/users/me/password', {
+                current_password: data.current_password,
+                new_password: data.new_password,
+            });
+
             toast({
-                title: "Settings Saved",
-                description: "Your notification preferences have been updated.",
+                title: "Password Updated",
+                description: "Your password has been successfully changed.",
                 action: <CheckCircle className="text-green-500"/>
             });
-            setHasChanges(false); // Reset changes state
-        } catch (err) {
-            console.error("Error saving notification settings:", err);
-            setError("Failed to save your notification settings.");
+            reset(); // Clear form fields after successful update
+        } catch (err: any) {
+            console.error("Error changing password:", err);
+            let errorMessage = "Failed to change password. Please try again.";
+            if (axios.isAxiosError(err) && err.response) {
+                 if (err.response.status === 400) {
+                     // Handle specific backend errors like incorrect current password
+                     if (err.response.data?.detail?.includes("Incorrect password")) {
+                         errorMessage = "Incorrect current password.";
+                         // Optionally set error focus on current_password field
+                     } else {
+                         errorMessage = err.response.data?.detail || "Invalid input.";
+                     }
+                 } else if (err.response.status === 422) {
+                     errorMessage = "Validation failed. Ensure your new password meets the requirements.";
+                 }
+            }
+            setError(errorMessage);
             toast({
-                title: "Save Failed",
-                description: "Could not save your settings. Please try again.",
+                title: "Update Failed",
+                description: errorMessage,
                 variant: "destructive",
             });
         } finally {
-            setSaving(false);
+            setLoading(false);
         }
     };
 
-
-     if (authLoading || loading) {
-        return (
-             <Card className="w-full max-w-lg mx-auto shadow-lg animate-pulse">
-                <CardHeader>
-                    <div className="h-6 bg-muted rounded w-3/4 mb-2"></div>
-                    <div className="h-4 bg-muted rounded w-1/2"></div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                     <div className="flex items-center justify-between">
-                        <div className="h-4 bg-muted rounded w-1/3"></div>
-                        <div className="h-6 w-11 bg-muted rounded-full"></div>
-                    </div>
-                     <div className="flex items-center justify-between">
-                        <div className="h-4 bg-muted rounded w-2/5"></div>
-                         <div className="h-6 w-11 bg-muted rounded-full"></div>
-                    </div>
-                     <div className="flex items-center justify-between">
-                         <div className="h-4 bg-muted rounded w-1/3"></div>
-                         <div className="h-6 w-11 bg-muted rounded-full"></div>
-                     </div>
-                    <div className="h-10 bg-muted rounded w-full mt-4"></div>
-                </CardContent>
-            </Card>
-        );
+     if (authLoading) {
+         // Show a simple loading state or skeleton
+         return <div className="flex justify-center items-center p-16"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
      }
 
      if (!user) {
+         // Should be handled by ProtectedRoute
          return <p>Please log in to manage your settings.</p>;
      }
 
@@ -134,8 +97,8 @@ export default function SettingsPage() {
     return (
         <Card className="w-full max-w-lg mx-auto shadow-lg">
             <CardHeader>
-                <CardTitle className="text-2xl flex items-center gap-2"><Bell className="h-6 w-6 text-primary"/> Notification Settings</CardTitle>
-                <CardDescription>Manage how you receive notifications from Imacall.</CardDescription> {/* Updated App Name */}
+                <CardTitle className="text-2xl flex items-center gap-2"><Lock className="h-6 w-6 text-primary"/> Account Settings</CardTitle>
+                <CardDescription>Manage your account password.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
                  {error && (
@@ -146,54 +109,56 @@ export default function SettingsPage() {
                     </Alert>
                   )}
 
-                <div className="flex items-center justify-between space-x-2 p-3 border rounded-md">
-                    <Label htmlFor="approve-notifications" className="font-medium">
-                       Character Approved
-                       <p className="text-sm text-muted-foreground font-normal">Notify me when my submitted character is approved.</p>
-                    </Label>
-                    <Switch
-                        id="approve-notifications"
-                        checked={preferences.newCharacterApproved}
-                        onCheckedChange={(checked) => handlePreferenceChange('newCharacterApproved', checked)}
-                        disabled={saving}
-                    />
-                </div>
+                 {/* --- Password Change Form --- */}
+                 <form onSubmit={handleSubmit(handlePasswordChange)} className="space-y-4 border-t pt-6">
+                      <h3 className="text-lg font-medium">Change Password</h3>
+                     <div className="space-y-2">
+                         <Label htmlFor="current_password">Current Password</Label>
+                         <Input
+                             id="current_password"
+                             type="password"
+                             {...register('current_password')}
+                             className={errors.current_password ? 'border-destructive' : ''}
+                             disabled={loading}
+                             autoComplete="current-password"
+                         />
+                         {errors.current_password && <p className="text-sm text-destructive">{errors.current_password.message}</p>}
+                     </div>
+                     <div className="space-y-2">
+                         <Label htmlFor="new_password">New Password</Label>
+                         <Input
+                             id="new_password"
+                             type="password"
+                             {...register('new_password')}
+                             className={errors.new_password ? 'border-destructive' : ''}
+                             disabled={loading}
+                             autoComplete="new-password"
+                         />
+                         {errors.new_password && <p className="text-sm text-destructive">{errors.new_password.message}</p>}
+                     </div>
+                     <div className="space-y-2">
+                         <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                         <Input
+                             id="confirmPassword"
+                             type="password"
+                             {...register('confirmPassword')}
+                             className={errors.confirmPassword ? 'border-destructive' : ''}
+                             disabled={loading}
+                             autoComplete="new-password"
+                         />
+                         {errors.confirmPassword && <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>}
+                     </div>
+                    <Button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full"
+                     >
+                        {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : <><Save className="mr-2 h-4 w-4" /> Change Password</>}
+                    </Button>
+                 </form>
 
-                <div className="flex items-center justify-between space-x-2 p-3 border rounded-md">
-                     <Label htmlFor="reject-notifications" className="font-medium">
-                       Character Rejected
-                        <p className="text-sm text-muted-foreground font-normal">Notify me when my submitted character is rejected.</p>
-                     </Label>
-                    <Switch
-                        id="reject-notifications"
-                        checked={preferences.characterRejected}
-                        onCheckedChange={(checked) => handlePreferenceChange('characterRejected', checked)}
-                        disabled={saving}
-                    />
-                </div>
+                {/* --- Notification Settings Removed --- */}
 
-                <div className="flex items-center justify-between space-x-2 p-3 border rounded-md">
-                    <Label htmlFor="review-notifications" className="font-medium">
-                       New Review Received (V2)
-                       <p className="text-sm text-muted-foreground font-normal">Notify me when someone reviews my public character.</p>
-                    </Label>
-                    <Switch
-                        id="review-notifications"
-                        checked={preferences.newReviewReceived}
-                        onCheckedChange={(checked) => handlePreferenceChange('newReviewReceived', checked)}
-                        disabled={saving}
-                    />
-                </div>
-
-                 {/* Add more settings here as needed */}
-
-                <Button
-                    onClick={handleSaveChanges}
-                    disabled={saving || !hasChanges}
-                    className="w-full"
-                 >
-                    {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : <><Save className="mr-2 h-4 w-4" /> Save Changes</>}
-                </Button>
             </CardContent>
         </Card>
     );

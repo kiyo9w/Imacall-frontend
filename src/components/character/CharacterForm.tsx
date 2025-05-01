@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, ChangeEvent } from 'react';
@@ -6,11 +5,16 @@ import { useRouter } from 'next/navigation';
 import { useForm, SubmitHandler, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { collection, addDoc, doc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '@/lib/firebase';
+import apiClient from '@/lib/apiClient'; // Use API client
 import { useAuth } from '@/contexts/AuthContext';
-import { Character, CharacterFormData, CharacterCategory, CharacterStatus } from '@/types/character';
+import {
+    CharacterPublic,
+    CharacterFormData,
+    CharacterCategory,
+    CharacterStatus,
+    CharacterCreate,
+    CharacterUpdateAdmin, // Use admin update type, assuming user updates hit this with permission checks
+ } from '@/types/character'; // Use API types
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,20 +24,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, Upload, AlertCircle, Bot, Trash2, Image as ImageIcon } from 'lucide-react';
+import { Loader2, Save, Upload, AlertCircle, Trash2, Image as ImageIcon } from 'lucide-react'; // Removed Bot, added Upload
 import { Input as ShadInput } from "@/components/ui/input"; // Renamed ShadCN input
-import { cn } from '@/lib/utils'; // For conditional classes
+import { cn } from '@/lib/utils';
+import axios from 'axios'; // For error handling
 
-// Zod schema for V1 form data
+// Zod schema for V1 form data mapped from API types
 const characterFormSchema = z.object({
     name: z.string().min(3, 'Name must be at least 3 characters').max(100, 'Name cannot exceed 100 characters'),
-    description: z.string().min(10, 'Description must be at least 10 characters').max(500, 'Description cannot exceed 500 characters'),
-    greetingMessage: z.string().min(5, 'Greeting must be at least 5 characters').max(500, 'Greeting cannot exceed 500 characters'),
-    scenario: z.string().max(1000, 'Scenario cannot exceed 1000 characters').optional(),
-    category: z.nativeEnum(CharacterCategory),
-    language: z.string().max(10, 'Language code too long (e.g., en, es-MX)').optional(),
+    description: z.string().min(10, 'Description must be at least 10 characters').max(500, 'Description cannot exceed 500 characters').optional().nullable(), // Match potential null from API/update
+    greetingMessage: z.string().min(5, 'Greeting must be at least 5 characters').max(500, 'Greeting cannot exceed 500 characters').optional().nullable(), // Match potential null from API/update
+    scenario: z.string().max(1000, 'Scenario cannot exceed 1000 characters').optional().nullable(),
+    category: z.nativeEnum(CharacterCategory).optional(), // Make optional as it might not be required in create/update
+    language: z.string().max(10, 'Language code too long (e.g., en, es-MX)').optional().nullable(),
     tags: z.string().optional(), // Keep as string for form input, transform on submit
-    // voiceId will be added later
+    // imageUrl is handled via state, not directly in the form data object passed to react-hook-form
 });
 
 
@@ -41,7 +46,8 @@ type CharacterFormInputs = z.infer<typeof characterFormSchema>;
 
 interface CharacterFormProps {
     mode: 'create' | 'edit';
-    existingCharacter?: Character; // Provided in edit mode
+    // Use CharacterPublic as it's what we fetch from the API
+    existingCharacter?: CharacterPublic;
 }
 
 const CATEGORIES = Object.values(CharacterCategory);
@@ -54,87 +60,60 @@ export function CharacterForm({ mode, existingCharacter }: CharacterFormProps) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
-    const [avatarPreview, setAvatarPreview] = useState<string | null>(existingCharacter?.imageUrl || null);
-    const [isUploading, setIsUploading] = useState(false);
-    const [removeAvatar, setRemoveAvatar] = useState(false); // Flag to remove existing avatar
+    // Use image_url from the API type
+    const [avatarPreview, setAvatarPreview] = useState<string | null>(existingCharacter?.image_url || null);
+    // Avatar upload is not in the current API spec, remove related state/logic
+    // const [isUploading, setIsUploading] = useState(false);
+    // const [removeAvatar, setRemoveAvatar] = useState(false);
 
-
-     // Pre-fill form in edit mode
-    const defaultValues: Partial<CharacterFormInputs> = {
+     // Pre-fill form in edit mode using CharacterPublic fields
+    const defaultValues: CharacterFormData = {
         name: existingCharacter?.name || '',
         description: existingCharacter?.description || '',
-        greetingMessage: existingCharacter?.greetingMessage || '',
-        scenario: existingCharacter?.scenario || '',
-        category: existingCharacter?.category || undefined, // Let zod handle if undefined
-        language: existingCharacter?.language || '',
+        greetingMessage: existingCharacter?.greeting_message || '',
+        scenario: '', // Assuming scenario isn't directly fetched in CharacterPublic, add if it is
+        category: existingCharacter?.category || undefined,
+        language: '', // Assuming language isn't directly fetched, add if it is
         tags: existingCharacter?.tags?.join(', ') || '', // Join array to string for input
+        imageUrl: existingCharacter?.image_url || null, // Keep for display
     };
 
-    const { register, handleSubmit, control, setValue, watch, formState: { errors, isDirty } } = useForm<CharacterFormInputs>({
+    const { register, handleSubmit, control, setValue, watch, formState: { errors, isDirty } } = useForm<CharacterFormData>({
         resolver: zodResolver(characterFormSchema),
-         defaultValues: defaultValues
+        defaultValues: defaultValues
     });
 
     // Set initial avatar preview in edit mode
     useEffect(() => {
-        if (mode === 'edit' && existingCharacter?.imageUrl) {
-            setAvatarPreview(existingCharacter.imageUrl);
+        if (mode === 'edit' && existingCharacter?.image_url) {
+            setAvatarPreview(existingCharacter.image_url);
         }
     }, [mode, existingCharacter]);
 
 
-    const handleAvatarChange = (e: ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            if (!file.type.startsWith('image/')) {
-                setError('Please select an image file (PNG, JPG, GIF).');
-                return;
-            }
-             if (file.size > 2 * 1024 * 1024) { // 2MB limit
-                setError('Image size should not exceed 2MB.');
-                return;
-            }
-            setError(null);
-            setAvatarFile(file);
-            setAvatarPreview(URL.createObjectURL(file));
-            setRemoveAvatar(false); // If a new file is chosen, don't remove
-             // Manually mark form as dirty if avatar changes
-            setValue('name', watch('name'), { shouldDirty: true });
-        }
-    };
-
-    const handleRemoveAvatar = () => {
-        setAvatarFile(null);
-        setAvatarPreview(null);
-        setRemoveAvatar(true); // Set flag to remove on save
-        // Manually mark form as dirty if avatar is removed
-        setValue('name', watch('name'), { shouldDirty: true });
+    // Avatar change/upload/remove logic removed as it's not in API spec.
+    // If image_url needs to be updated via a URL input:
+    const handleImageUrlChange = (e: ChangeEvent<HTMLInputElement>) => {
+        const url = e.target.value;
+        setValue('imageUrl', url, { shouldDirty: true }); // Update hidden form value if needed for submission
+        setAvatarPreview(url); // Update preview
     };
 
 
-     const uploadAvatar = async (characterId: string, file: File): Promise<string> => {
-        setIsUploading(true);
-        try {
-            const storageRef = ref(storage, `character-avatars/${characterId}/${file.name}`);
-            const snapshot = await uploadBytes(storageRef, file);
-            const downloadURL = await getDownloadURL(snapshot.ref);
-            return downloadURL;
-        } finally {
-            setIsUploading(false);
-        }
-    };
-
-    const onSubmit: SubmitHandler<CharacterFormInputs> = async (data) => {
+    const onSubmit: SubmitHandler<CharacterFormData> = async (data) => {
          if (!user) {
              setError("You must be logged in to submit a character.");
              return;
          }
-        // Check if anything actually changed in edit mode
-        const avatarChanged = avatarFile || removeAvatar;
-         if (mode === 'edit' && !isDirty && !avatarChanged) {
+
+         // Check if anything actually changed in edit mode
+         // Compare with existingCharacter data, needs careful handling if types differ slightly
+         const hasMeaningfulChange = isDirty; // Simple check for now
+
+         if (mode === 'edit' && !hasMeaningfulChange) {
             toast({ title: "No Changes", description: "No changes were detected." });
             return;
-        }
+         }
 
 
         setLoading(true);
@@ -143,82 +122,92 @@ export function CharacterForm({ mode, existingCharacter }: CharacterFormProps) {
          // Transform tags string to array before saving
          const tagsArray = data.tags
            ? data.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
-           : []; // Default to empty array if undefined/empty
+           : undefined; // Use undefined if empty/not provided, matching potential API schema
 
 
         try {
-            let finalImageUrl: string | null | undefined = mode === 'edit' ? existingCharacter?.imageUrl : undefined;
-
-            // Logic for Create
+            // Logic for Create -> POST /characters/submit
             if (mode === 'create') {
-                 // Prepare data, excluding the raw tags string and including the processed array
-                const { tags, ...restOfData } = data;
-                const characterData: Omit<Character, 'id' | 'createdAt' | 'updatedAt' | 'imageUrl'> & { createdAt: Timestamp, updatedAt: Timestamp } = {
-                    userId: user.uid,
-                    creatorType: 'User', // Assuming user creation for now
-                    status: 'Pending' as CharacterStatus, // Default status for new submissions
-                    isPublic: false, // Default to private
-                    createdAt: serverTimestamp() as Timestamp,
-                    updatedAt: serverTimestamp() as Timestamp,
-                    ...restOfData, // Spread other validated fields
-                    tags: tagsArray, // Use the processed array
-                    // Fields not in form yet
-                    popularityScore: 0,
-                    ratingCount: 0,
-                };
+                 const createData: CharacterCreate = {
+                    name: data.name,
+                    description: data.description || null,
+                    // Use the URL from the input/state if image URL is managed that way
+                    image_url: avatarPreview || null, // Assuming avatarPreview holds the URL
+                    greeting_message: data.greetingMessage || null,
+                    // Add other fields if they are part of CharacterCreate schema
+                    category: data.category || null,
+                    tags: tagsArray || null,
+                    scenario: data.scenario || null,
+                    language: data.language || null,
+                 };
 
-                const docRef = await addDoc(collection(db, 'characters'), characterData);
-
-                // Upload avatar if selected AFTER getting the doc ID
-                if (avatarFile) {
-                     finalImageUrl = await uploadAvatar(docRef.id, avatarFile);
-                     await updateDoc(docRef, { imageUrl: finalImageUrl });
-                }
+                const response = await apiClient.post<CharacterPublic>('/characters/submit', createData);
 
                  toast({
                     title: "Character Submitted!",
-                    description: `${data.name} has been submitted for review.`,
+                    description: `${response.data.name} has been submitted for review.`,
                 });
                  router.push('/account/characters'); // Redirect to dashboard
 
 
-            // Logic for Edit
+            // Logic for Edit -> PUT /admin/characters/{id} (assuming user has permission)
             } else if (mode === 'edit' && existingCharacter) {
-                 // Upload new avatar if selected
-                 if (avatarFile) {
-                     finalImageUrl = await uploadAvatar(existingCharacter.id, avatarFile);
-                 } else if (removeAvatar) {
-                     finalImageUrl = null; // Explicitly set to null if removed
-                      // TODO: Optionally delete old image from storage here
-                 }
+                 const updateData: CharacterUpdateAdmin = {
+                    name: data.name !== existingCharacter.name ? data.name : undefined,
+                    description: data.description !== existingCharacter.description ? (data.description || null) : undefined,
+                    image_url: avatarPreview !== existingCharacter.image_url ? (avatarPreview || null) : undefined,
+                    greeting_message: data.greetingMessage !== existingCharacter.greeting_message ? (data.greetingMessage || null) : undefined,
+                     // Add other fields if they are part of CharacterUpdateAdmin schema and have changed
+                    category: data.category !== existingCharacter.category ? (data.category || null) : undefined,
+                    tags: tagsArray, // Send updated tags array or undefined/null
+                    // scenario: data.scenario !== existingCharacter.scenario ? (data.scenario || null) : undefined, // Add if applicable
+                    // language: data.language !== existingCharacter.language ? (data.language || null) : undefined, // Add if applicable
 
-                 // Prepare data, excluding the raw tags string and including the processed array
-                 const { tags, ...restOfData } = data;
-                 const updateData: Partial<Character> & { updatedAt: Timestamp } = {
-                    ...restOfData, // Spread other validated fields
-                    tags: tagsArray, // Use the processed array
-                    imageUrl: finalImageUrl, // Update with new or removed URL
-                    updatedAt: serverTimestamp() as Timestamp,
-                     // Reset status to Pending if editing a Rejected character
-                    status: existingCharacter.status === 'Rejected' ? 'Pending' : existingCharacter.status,
-                     adminFeedback: existingCharacter.status === 'Rejected' ? '' : existingCharacter.adminFeedback // Clear feedback on resubmit
-                };
+                    // If resubmitting a 'Rejected' character, API should handle status change to 'Pending'
+                     status: existingCharacter.status === 'Rejected' ? 'Pending' : undefined, // Explicitly set to Pending if was Rejected
+                    // adminFeedback: existingCharacter.status === 'Rejected' ? null : undefined, // Clear feedback if resubmitting
+                 };
 
-                 await updateDoc(doc(db, 'characters', existingCharacter.id), updateData);
+                  // Remove undefined fields before sending
+                  Object.keys(updateData).forEach(key => updateData[key as keyof CharacterUpdateAdmin] === undefined && delete updateData[key as keyof CharacterUpdateAdmin]);
+
+
+                 // Check if there's actually anything to update after removing undefined
+                  if (Object.keys(updateData).length === 0) {
+                      toast({ title: "No Changes", description: "No effective changes to save." });
+                      setLoading(false);
+                      return;
+                  }
+
+
+                 // Use PUT for update as per API spec
+                 const response = await apiClient.put<CharacterPublic>(`/admin/characters/${existingCharacter.id}`, updateData);
 
                  toast({
                     title: "Character Updated!",
-                    description: `${data.name} has been updated.`,
+                    description: `${response.data.name} has been updated.`,
                 });
                  router.push('/account/characters'); // Redirect to dashboard
             }
 
         } catch (err: any) {
-            console.error(`Error ${mode === 'create' ? 'creating' : 'updating'} character:`, err);
-            setError(err.message || `Failed to ${mode} character. Please try again.`);
+            console.error(`Error ${mode === 'create' ? 'submitting' : 'updating'} character:`, err);
+             let errorMsg = `Failed to ${mode} character. Please try again.`;
+             if (axios.isAxiosError(err) && err.response) {
+                 if (err.response.status === 422) {
+                     errorMsg = `Validation Error: ${err.response.data?.detail?.[0]?.msg || 'Invalid data'}`;
+                 } else if (err.response.status === 403) {
+                     errorMsg = "You do not have permission for this action.";
+                 } else if (err.response.status === 401) {
+                     errorMsg = "Authentication error. Please log in again.";
+                 } else if (err.response.status === 404) {
+                      errorMsg = "Character not found (for update).";
+                 }
+             }
+            setError(errorMsg);
             toast({
                  title: `${mode === 'create' ? 'Submission' : 'Update'} Failed`,
-                 description: err.message || `Could not ${mode} character.`,
+                 description: errorMsg,
                  variant: "destructive",
              });
         } finally {
@@ -232,9 +221,10 @@ export function CharacterForm({ mode, existingCharacter }: CharacterFormProps) {
 
     return (
         <Card className="max-w-2xl mx-auto shadow-lg">
+            {/* Use CharacterFormData for the form */}
             <form onSubmit={handleSubmit(onSubmit)}>
                 <CardHeader>
-                    <CardTitle>{mode === 'create' ? 'New Character Details' : `Editing: ${existingCharacter?.name}`}</CardTitle>
+                     <CardTitle>{mode === 'create' ? 'New Character Details' : `Editing: ${existingCharacter?.name}`}</CardTitle>
                     <CardDescription>
                         {mode === 'create'
                             ? 'Fill in the details for your new AI character. It will be submitted for review.'
@@ -251,7 +241,7 @@ export function CharacterForm({ mode, existingCharacter }: CharacterFormProps) {
                         </Alert>
                     )}
 
-                    {/* Avatar Upload */}
+                    {/* Avatar Section - Use URL input if image upload isn't supported */}
                      <div className="flex items-center gap-4">
                          <Avatar className="h-24 w-24 border">
                              <AvatarImage src={avatarPreview || undefined} alt="Character Avatar Preview"/>
@@ -259,35 +249,19 @@ export function CharacterForm({ mode, existingCharacter }: CharacterFormProps) {
                                  <ImageIcon size={40}/>
                              </AvatarFallback>
                          </Avatar>
-                         <div className="space-y-2">
-                             <Label htmlFor="avatarFile">Character Avatar (Optional)</Label>
-                             <div className="flex gap-2">
-                                 <ShadInput
-                                     id="avatarFile"
-                                     type="file"
-                                     accept="image/*"
-                                     onChange={handleAvatarChange}
-                                     className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
-                                     disabled={loading || isUploading}
-                                 />
-                                 {avatarPreview && (
-                                     <Button
-                                         type="button"
-                                         variant="ghost"
-                                         size="icon"
-                                         onClick={handleRemoveAvatar}
-                                         disabled={loading || isUploading}
-                                         title="Remove Avatar"
-                                     >
-                                         <Trash2 className="h-4 w-4 text-destructive" />
-                                     </Button>
-                                 )}
-                             </div>
-                             <p className="text-xs text-muted-foreground">Recommended: Square image (e.g., 512x512). Max 2MB.</p>
-                             {isUploading && <p className="text-xs text-primary flex items-center"><Loader2 className="mr-1 h-3 w-3 animate-spin"/> Uploading...</p>}
+                         <div className="flex-grow space-y-2">
+                             <Label htmlFor="imageUrl">Character Image URL (Optional)</Label>
+                             <ShadInput
+                                 id="imageUrl"
+                                 type="url"
+                                 placeholder="https://example.com/image.png"
+                                 value={avatarPreview || ''} // Bind value to avatarPreview state
+                                 onChange={handleImageUrlChange} // Update state on change
+                                 disabled={loading}
+                             />
+                             <p className="text-xs text-muted-foreground">Enter a direct URL to the character's image.</p>
                          </div>
                      </div>
-
 
                     {/* Basic Fields */}
                     <div className="space-y-2">
@@ -297,14 +271,16 @@ export function CharacterForm({ mode, existingCharacter }: CharacterFormProps) {
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="description">Short Description *</Label>
+                         {/* Adjusted description based on schema */}
+                        <Label htmlFor="description">Short Description</Label>
                         <Textarea id="description" {...register('description')} placeholder="A brief tagline or summary (max 500 chars)" disabled={loading} rows={3} className={errors.description ? 'border-destructive' : ''} />
                         {errors.description && <p className="text-sm text-destructive">{errors.description.message}</p>}
                     </div>
 
                      {/* Detail Fields */}
                      <div className="space-y-2">
-                        <Label htmlFor="greetingMessage">Greeting Message *</Label>
+                         {/* Adjusted greeting based on schema */}
+                        <Label htmlFor="greetingMessage">Greeting Message</Label>
                         <Textarea id="greetingMessage" {...register('greetingMessage')} placeholder="The first thing the character says (max 500 chars)" disabled={loading} rows={3} className={errors.greetingMessage ? 'border-destructive' : ''} />
                         {errors.greetingMessage && <p className="text-sm text-destructive">{errors.greetingMessage.message}</p>}
                     </div>
@@ -317,12 +293,17 @@ export function CharacterForm({ mode, existingCharacter }: CharacterFormProps) {
 
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                          <div className="space-y-2">
-                             <Label htmlFor="category">Category *</Label>
+                              {/* Adjusted category based on schema */}
+                             <Label htmlFor="category">Category</Label>
                               <Controller
                                 control={control}
                                 name="category"
                                 render={({ field }) => (
-                                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={loading}>
+                                    <Select
+                                        onValueChange={(value) => field.onChange(value as CharacterCategory)} // Ensure value is CharacterCategory
+                                        value={field.value || ''} // Handle undefined case
+                                        disabled={loading}
+                                    >
                                         <SelectTrigger className={errors.category ? 'border-destructive' : ''}>
                                             <SelectValue placeholder="Select a category" />
                                         </SelectTrigger>
@@ -338,6 +319,7 @@ export function CharacterForm({ mode, existingCharacter }: CharacterFormProps) {
                          </div>
 
                          <div className="space-y-2">
+                              {/* Adjusted language based on schema */}
                              <Label htmlFor="language">Language (Optional)</Label>
                              <Input id="language" {...register('language')} placeholder="e.g., en, es, ja" disabled={loading} className={errors.language ? 'border-destructive' : ''} />
                              {errors.language && <p className="text-sm text-destructive">{errors.language.message}</p>}
@@ -357,18 +339,13 @@ export function CharacterForm({ mode, existingCharacter }: CharacterFormProps) {
                          <p className="text-xs text-muted-foreground">Helps users find your character.</p>
                     </div>
 
-                     {/* Voice ID (Placeholder for V2/V3) */}
-                    {/* <div className="space-y-2">
-                        <Label htmlFor="voiceId">Voice ID (Optional)</Label>
-                        <Input id="voiceId" {...register('voiceId')} placeholder="Enter voice identifier (if known)" disabled={loading} />
-                         <p className="text-xs text-muted-foreground">Select a voice for voice interactions.</p>
-                    </div> */}
-
+                     {/* Voice ID removed - not in API spec */}
 
                 </CardContent>
                 <CardFooter>
-                    <Button type="submit" disabled={loading || isUploading} className="w-full">
-                         {loading || isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    {/* isUploading removed */}
+                    <Button type="submit" disabled={loading} className="w-full">
+                         {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                          {loading ? 'Saving...' : (mode === 'create' ? 'Submit for Review' : 'Save Changes')}
                     </Button>
                 </CardFooter>
@@ -376,4 +353,3 @@ export function CharacterForm({ mode, existingCharacter }: CharacterFormProps) {
         </Card>
     );
 }
-

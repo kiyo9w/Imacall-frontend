@@ -4,21 +4,23 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { doc, getDoc, collection, query, where, orderBy, limit, getDocs, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { Character, CharacterReview } from '@/types/character';
+import apiClient from '@/lib/apiClient'; // Import API client
+import { CharacterPublic, CharacterReview } from '@/types/character'; // Use API types
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Star, MessageSquare, Phone, Loader2, AlertCircle, User as UserIcon } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
-import { RatingInput } from '@/components/character/RatingInput'; // Component for star rating input
-import { ReviewForm } from '@/components/character/ReviewForm'; // Component for submitting review text
+// import { Separator } from '@/components/ui/separator'; // Might not be needed
+// RatingInput and ReviewForm removed as review submission isn't in the API spec
+// import { RatingInput } from '@/components/character/RatingInput';
+// import { ReviewForm } from '@/components/character/ReviewForm';
 import { useAuth } from '@/contexts/AuthContext';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, parseISO } from 'date-fns'; // Import parseISO
+import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
+import axios from 'axios'; // For error handling
 
-
+// Star rating display component remains the same
 function StarRatingDisplay({ rating, count }: { rating: number; count?: number }) {
     const fullStars = Math.floor(rating);
     const halfStar = rating % 1 >= 0.5;
@@ -33,7 +35,7 @@ function StarRatingDisplay({ rating, count }: { rating: number; count?: number }
             {[...Array(emptyStars)].map((_, i) => (
                 <Star key={`empty-${i}`} className="h-5 w-5 text-muted-foreground/50" />
             ))}
-            {count !== undefined && <span className="ml-2 text-sm text-muted-foreground">({count} {count === 1 ? 'rating' : 'ratings'})</span>}
+            {count !== undefined && count > 0 && <span className="ml-2 text-sm text-muted-foreground">({count} {count === 1 ? 'rating' : 'ratings'})</span>}
         </div>
     );
 }
@@ -45,79 +47,55 @@ export default function CharacterDetailPage() {
     const { user } = useAuth();
     const characterId = params.id as string;
 
-    const [character, setCharacter] = useState<Character | null>(null);
-    const [reviews, setReviews] = useState<CharacterReview[]>([]);
+    const [character, setCharacter] = useState<CharacterPublic | null>(null);
+    // Reviews state and related logic removed as API doesn't support fetching/submitting them yet
+    // const [reviews, setReviews] = useState<CharacterReview[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [loadingReviews, setLoadingReviews] = useState(true);
+    // const [loadingReviews, setLoadingReviews] = useState(true); // Removed
 
     useEffect(() => {
-        const fetchCharacterAndReviews = async () => {
+        const fetchCharacter = async () => {
             if (!characterId) return;
 
             setLoading(true);
-            setLoadingReviews(true);
+            // setLoadingReviews(true); // Removed
             setError(null);
 
             try {
-                // Fetch character data
-                const characterDocRef = doc(db, 'characters', characterId);
-                const characterDocSnap = await getDoc(characterDocRef);
+                // Fetch character data using the public endpoint
+                const response = await apiClient.get<CharacterPublic>(`/characters/${characterId}`);
 
-                if (!characterDocSnap.exists() || !characterDocSnap.data()?.isPublic || characterDocSnap.data()?.status !== 'Approved') {
-                   // Consider redirecting to a 404 page or showing a specific message
-                   setError('Character not found or is not publicly available.');
-                   setCharacter(null);
-                   setReviews([]);
-                   return;
-                }
+                 // API endpoint returns 404 if not found or not approved/public
+                 setCharacter(response.data);
 
-                setCharacter({ id: characterDocSnap.id, ...characterDocSnap.data() } as Character);
-
-                 // Fetch recent reviews
-                const reviewsQuery = query(
-                    collection(db, 'reviews'), // Assuming top-level 'reviews' collection
-                    where('characterId', '==', characterId),
-                    orderBy('createdAt', 'desc'),
-                    limit(5) // Fetch latest 5 reviews for display
-                );
-                const reviewsSnapshot = await getDocs(reviewsQuery);
-                const fetchedReviews = reviewsSnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data(),
-                     // Convert Firestore Timestamp to JS Date for easier handling
-                    // createdAt: (doc.data().createdAt as Timestamp).toDate()
-                 }) as CharacterReview);
-
-                setReviews(fetchedReviews);
+                 // Fetch reviews if API supported it
+                 // const reviewsResponse = await apiClient.get(...);
+                 // setReviews(reviewsResponse.data.data);
 
             } catch (err) {
                 console.error("Error fetching character details:", err);
-                setError("Failed to load character details. Please try again.");
+                 if (axios.isAxiosError(err) && err.response) {
+                    if (err.response.status === 404) {
+                         setError('Character not found or is not publicly available.');
+                    } else {
+                         setError("Failed to load character details. Please try again.");
+                    }
+                 } else {
+                     setError("An unexpected error occurred.");
+                 }
+                setCharacter(null);
+                // setReviews([]); // Removed
             } finally {
                 setLoading(false);
-                setLoadingReviews(false);
+                // setLoadingReviews(false); // Removed
             }
         };
 
-        fetchCharacterAndReviews();
+        fetchCharacter();
     }, [characterId]);
 
-    const handleReviewSubmitted = (newReview: CharacterReview) => {
-        // Add the new review to the top of the list
-        setReviews(prev => [newReview, ...prev].slice(0, 5)); // Keep latest 5
-        // Potentially refetch character data if backend updates averageRating immediately
-        // Or update averageRating optimistically on the client (more complex)
-         setCharacter(prev => {
-            if (!prev) return null;
-            const oldTotalRating = (prev.averageRating || 0) * (prev.ratingCount || 0);
-            const newRatingCount = (prev.ratingCount || 0) + 1;
-            const newTotalRating = oldTotalRating + newReview.rating;
-            const newAverageRating = newTotalRating / newRatingCount;
-            return { ...prev, averageRating: newAverageRating, ratingCount: newRatingCount };
-        });
-    };
-
+     // handleReviewSubmitted removed as review submission isn't available
 
     if (loading) {
         return <div className="flex justify-center items-center p-16"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
@@ -135,7 +113,6 @@ export default function CharacterDetailPage() {
     }
 
      if (!character) {
-         // This case should be covered by error state, but added for safety
          return <p className="text-center py-16 text-muted-foreground">Character data could not be loaded.</p>;
      }
 
@@ -148,25 +125,28 @@ export default function CharacterDetailPage() {
                     <Card className="overflow-hidden shadow-lg">
                         <div className="aspect-[3/4] relative bg-muted">
                              <Image
-                                data-ai-hint={`${character.category} character portrait ${character.tags?.join(' ')}`}
-                                src={character.imageUrl || `https://picsum.photos/seed/${character.id}/300/400`}
+                                data-ai-hint={`${character.category || ''} character portrait ${character.tags?.join(' ') || ''}`}
+                                // Use image_url from API
+                                src={character.image_url || `https://picsum.photos/seed/${character.id}/300/400`}
                                 alt={character.name}
                                 fill
                                 sizes="(max-width: 768px) 100vw, 33vw"
                                 style={{ objectFit: 'cover' }}
-                                priority // Prioritize loading the main image
+                                priority
                             />
                         </div>
                     </Card>
                      {/* Interaction Buttons */}
                     <div className="space-y-2">
                         <Button asChild size="lg" className="w-full">
+                            {/* Link to chat page - requires conversation management */}
                             <Link href={`/character/${character.id}/chat`}>
                                 <MessageSquare className="mr-2 h-5 w-5" /> Chat Now
                             </Link>
                         </Button>
-                        <Button variant="outline" size="lg" className="w-full" disabled> {/* V2 Feature - Placeholder */}
-                            <Phone className="mr-2 h-5 w-5" /> Voice Call (V2)
+                        {/* Voice call feature disabled */}
+                        <Button variant="outline" size="lg" className="w-full" disabled>
+                            <Phone className="mr-2 h-5 w-5" /> Voice Call (Coming Soon)
                         </Button>
                     </div>
                 </div>
@@ -177,86 +157,48 @@ export default function CharacterDetailPage() {
                         <CardHeader>
                             <CardTitle className="text-3xl">{character.name}</CardTitle>
                              <div className="flex flex-wrap gap-2 mt-2">
-                                <Badge variant="secondary">{character.category}</Badge>
+                                {character.category && <Badge variant="secondary">{character.category}</Badge>}
                                 {character.tags?.map(tag => (
                                     <Badge key={tag} variant="outline">{tag}</Badge>
                                 ))}
                             </div>
-                             {character.averageRating !== undefined && character.averageRating > 0 ? (
+                             {/* Display Rating if available */}
+                             {character.averageRating !== undefined && character.averageRating !== null && character.averageRating > 0 ? (
                                  <div className="mt-3">
-                                    <StarRatingDisplay rating={character.averageRating} count={character.ratingCount} />
+                                    <StarRatingDisplay rating={character.averageRating} count={character.ratingCount || 0} />
                                  </div>
                              ) : (
                                  <p className="text-sm text-muted-foreground mt-3">No ratings yet.</p>
                              )}
                         </CardHeader>
                         <CardContent>
-                             <p className="text-foreground mb-4">{character.description}</p>
-                             {character.scenario && (
-                                <>
-                                    <h4 className="font-semibold mb-1">Scenario:</h4>
-                                    <p className="text-sm text-muted-foreground italic mb-4">{character.scenario}</p>
-                                </>
-                             )}
+                             <p className="text-foreground mb-4">{character.description || 'No description provided.'}</p>
+                             {/* Scenario might not be in CharacterPublic, display if added */}
+                             {/* {character.scenario && ( ... )} */}
                              <h4 className="font-semibold mb-1">Greeting:</h4>
-                             <p className="text-sm text-muted-foreground italic">{`"${character.greetingMessage}"`}</p>
-
+                             <p className="text-sm text-muted-foreground italic">
+                                 {character.greeting_message ? `"${character.greeting_message}"` : '"Hello!"'}
+                            </p>
                         </CardContent>
                     </Card>
 
-                    {/* Ratings & Reviews Section (V2) */}
+                    {/* Ratings & Reviews Section (Placeholder - needs API support) */}
                      <Card className="shadow-sm">
                         <CardHeader>
                              <CardTitle className="text-xl">Ratings & Reviews</CardTitle>
-                             <CardDescription>Share your experience with {character.name}.</CardDescription>
+                             <CardDescription>Feedback for {character.name}.</CardDescription>
                         </CardHeader>
                          <CardContent>
-                             {user && (
-                                <div className="mb-6 p-4 border rounded-lg bg-background">
-                                     <h4 className="font-semibold mb-3">Leave a Review</h4>
-                                     {/* Pass characterId and user to the form */}
-                                     <ReviewForm
-                                         characterId={character.id}
-                                         userId={user.uid}
-                                         onReviewSubmitted={handleReviewSubmitted}
-                                     />
-                                </div>
-                             )}
+                             {/* Review Submission Form Removed */}
+                             {/* {user && ( ... <ReviewForm ... /> ...)} */}
+                             <p className="text-sm text-muted-foreground mb-4">
+                                 {user ? "Reviews feature coming soon!" : "Log in to leave a review (feature coming soon)."}
+                             </p>
+
                               <h4 className="font-semibold mb-4">Recent Reviews</h4>
-                             {loadingReviews ? (
-                                <div className="space-y-4">
-                                    <Skeleton className="h-16 w-full" />
-                                    <Skeleton className="h-16 w-full" />
-                                </div>
-                             ) : reviews.length > 0 ? (
-                                <div className="space-y-4">
-                                    {reviews.map(review => (
-                                        <div key={review.id} className="flex gap-3 border-b pb-4 last:border-b-0">
-                                             <Avatar className="h-10 w-10 mt-1">
-                                                <AvatarImage src={review.userAvatarUrl || undefined} alt={review.displayName || 'User'} />
-                                                <AvatarFallback>
-                                                    {review.displayName ? review.displayName.charAt(0).toUpperCase() : <UserIcon size={18} />}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                             <div className="flex-1">
-                                                 <div className="flex justify-between items-center mb-1">
-                                                     <span className="font-medium text-sm">{review.displayName || 'Anonymous User'}</span>
-                                                      {/* Check if createdAt is a Timestamp before calling toDate */}
-                                                     <span className="text-xs text-muted-foreground">
-                                                         {review.createdAt instanceof Timestamp
-                                                             ? formatDistanceToNow(review.createdAt.toDate(), { addSuffix: true })
-                                                             : 'Date unavailable'}
-                                                      </span>
-                                                 </div>
-                                                <StarRatingDisplay rating={review.rating} />
-                                                {review.reviewText && <p className="text-sm mt-2 text-foreground/90">{review.reviewText}</p>}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="text-sm text-muted-foreground">No reviews yet for this character.</p>
-                             )}
+                              {/* Review Display Removed - Needs API */}
+                               <p className="text-sm text-muted-foreground">No reviews available yet.</p>
+                             {/* {loadingReviews ? ( ... ) : reviews.length > 0 ? ( ... ) : ( ... )} */}
                          </CardContent>
                      </Card>
                 </div>
@@ -264,6 +206,3 @@ export default function CharacterDetailPage() {
         </div>
     );
 }
-
-// Import AlertCircle if needed
-import { AlertCircle } from 'lucide-react';

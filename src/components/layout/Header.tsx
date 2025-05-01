@@ -12,16 +12,24 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
-import { LogIn, LogOut, User, Settings, Bot } from 'lucide-react';
+import { LogIn, LogOut, User, Settings, Bot, History } from 'lucide-react'; // Added History
 import { useRouter } from 'next/navigation';
+import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
 
 export function Header() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, logout } = useAuth(); // Use logout from new AuthContext
   const router = useRouter();
 
   const handleSignOut = async () => {
-    await signOut();
-    router.push('/'); // Redirect to homepage after sign out
+    await logout();
+    // Redirect is handled within logout function in AuthContext
+  };
+
+  const getInitials = (name?: string | null): string => {
+    if (!name) return '';
+    const names = name.split(' ');
+    if (names.length === 1) return names[0].charAt(0).toUpperCase();
+    return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
   };
 
   return (
@@ -29,22 +37,23 @@ export function Header() {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="text-2xl font-bold text-primary flex items-center gap-2">
            <Bot className="h-6 w-6" /> {/* Minimalist Icon */}
-          Imacall {/* Updated App Name */}
+          Imacall
         </Link>
         <nav className="flex items-center gap-4">
           <Button variant="ghost" asChild>
             <Link href="/characters">Characters</Link>
           </Button>
           {loading ? (
-            <div className="h-10 w-20 bg-muted rounded animate-pulse"></div>
+             <Skeleton className="h-10 w-10 rounded-full" /> // Skeleton for avatar
           ) : user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0"> {/* Adjusted padding */}
                   <Avatar className="h-9 w-9">
-                    <AvatarImage src={user.photoURL ?? undefined} alt={user.displayName ?? 'User'} />
+                    {/* Assuming user object doesn't have photoURL yet */}
+                    {/* <AvatarImage src={user.photoURL ?? undefined} alt={user.full_name ?? 'User'} /> */}
                     <AvatarFallback>
-                      {user.displayName ? user.displayName.charAt(0).toUpperCase() : <User />}
+                      {user.full_name ? getInitials(user.full_name) : <User size={18} />}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -53,7 +62,7 @@ export function Header() {
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">
-                      {user.displayName || 'User'}
+                      {user.full_name || 'User'} {/* Use full_name */}
                     </p>
                     <p className="text-xs leading-none text-muted-foreground">
                       {user.email}
@@ -81,13 +90,14 @@ export function Header() {
                 </DropdownMenuItem>
                  <DropdownMenuItem asChild>
                    <Link href="/account/history">
-                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 h-4 w-4"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M12 8v4l2 2"/></svg>
+                      {/* Use History icon from lucide-react */}
+                     <History className="mr-2 h-4 w-4"/>
                      <span>History</span>
                    </Link>
                  </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut}>
-                  <LogOut className="mr-2 h-4 w-4" />
+                <DropdownMenuItem onClick={handleSignOut} disabled={loading}>
+                   {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
                   <span>Log out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -104,3 +114,6 @@ export function Header() {
     </header>
   );
 }
+
+// Import Loader2 if logout process has async aspects needing visual feedback
+import { Loader2 } from 'lucide-react';

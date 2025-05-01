@@ -2,12 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
-import { collection, query, where, orderBy, onSnapshot, doc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { Character, CharacterStatus } from '@/types/character';
-import { Button } from '@/components/ui/button';
+import apiClient from '@/lib/apiClient'; // Import API client
+import { CharacterPublic, CharacterStatus, PaginatedResponse } from '@/types/character'; // Use API types
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -15,106 +13,117 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { MoreHorizontal, Edit, Trash2, PlusCircle, Eye, EyeOff, Loader2, AlertCircle, Bot } from 'lucide-react';
-import { format } from 'date-fns'; // For formatting dates
-import { cn } from '@/lib/utils'; // For conditional classes
+import { MoreHorizontal, Edit, Trash2, PlusCircle, Bot, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react'; // Keep icons
+import { format, parseISO } from 'date-fns'; // Keep date-fns, use parseISO for API dates
+import { cn } from '@/lib/utils'; // Keep cn
+import axios from 'axios'; // For error handling
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // Import Avatar components
+
+
+const CHARACTERS_PER_PAGE = 10; // Example pagination limit
 
 export default function MyCharactersPage() {
     const { user, loading: authLoading } = useAuth();
     const { toast } = useToast();
-    const [characters, setCharacters] = useState<Character[]>([]);
+    const [characters, setCharacters] = useState<CharacterPublic[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
-    const [togglingId, setTogglingId] = useState<string | null>(null);
-
+    // Removed toggling state as isPublic toggle might be admin-only
+    // const [togglingId, setTogglingId] = useState<string | null>(null);
 
      const getStatusBadgeVariant = (status: CharacterStatus): "default" | "secondary" | "outline" | "destructive" => {
         switch (status) {
-            case 'Approved': return 'default'; // Use primary color (via default variant)
-            case 'Pending': return 'secondary'; // Muted/secondary look
-            case 'Draft': return 'outline'; // Outline style
-            case 'Rejected': return 'destructive'; // Destructive style
+            case 'Approved': return 'default';
+            case 'Pending': return 'secondary';
+            // case 'Draft': return 'outline'; // No 'Draft' status in API? Assuming only Pending, Approved, Rejected
+            case 'Rejected': return 'destructive';
             default: return 'secondary';
         }
     };
 
-    useEffect(() => {
-        if (!user || authLoading) {
-             if (!authLoading) setLoading(false); // Stop loading if not logged in
-            return;
-        }
+    const fetchMyCharacters = async () => {
+        if (!user) return; // Should be handled by ProtectedRoute
 
         setLoading(true);
         setError(null);
 
-        const charactersQuery = query(
-            collection(db, 'characters'),
-            where('userId', '==', user.uid),
-            orderBy('createdAt', 'desc')
-        );
-
-        const unsubscribe = onSnapshot(charactersQuery, (querySnapshot) => {
-            const fetchedCharacters: Character[] = [];
-            querySnapshot.forEach((doc) => {
-                fetchedCharacters.push({ id: doc.id, ...doc.data() } as Character);
+        try {
+             // Call the API endpoint to get user's submissions
+            const response = await apiClient.get<PaginatedResponse<CharacterPublic>>(
+                '/characters/my-submissions', // Endpoint for user's own characters regardless of status
+                {
+                    params: {
+                        skip: 0,
+                        limit: 100 // Fetch a larger number initially, or implement pagination
+                    }
+                }
+            );
+             // Sort by updatedAt or createdAt if available, otherwise keep API order (or implement server-side sorting)
+            const sortedCharacters = response.data.data.sort((a, b) => {
+                const dateA = a.updatedAt ? parseISO(a.updatedAt).getTime() : 0;
+                const dateB = b.updatedAt ? parseISO(b.updatedAt).getTime() : 0;
+                return dateB - dateA; // Descending order
             });
-            setCharacters(fetchedCharacters);
-            setLoading(false);
-        }, (err) => {
+
+            setCharacters(sortedCharacters);
+        } catch (err) {
             console.error("Error fetching user characters:", err);
             setError("Failed to load your characters.");
+             if (axios.isAxiosError(err) && err.response?.status === 401) {
+                setError("Authentication error. Please log in again.");
+                // Optionally redirect to login
+             }
+        } finally {
             setLoading(false);
-        });
+        }
+    };
 
-        return () => unsubscribe(); // Cleanup listener on unmount
 
-    }, [user, authLoading]);
+    useEffect(() => {
+        if (!authLoading && user) {
+            fetchMyCharacters();
+        } else if (!authLoading && !user) {
+            setLoading(false); // Stop loading if not logged in
+        }
+         // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user, authLoading]); // Fetch when user context is ready
 
 
     const handleDeleteCharacter = async (characterId: string) => {
          setDeletingId(characterId);
          try {
-             await deleteDoc(doc(db, 'characters', characterId));
+             // Call the ADMIN delete endpoint - Requires admin privileges on backend!
+             // If users can delete their own SUBMISSIONS (e.g., pending/rejected),
+             // the backend needs a different endpoint or logic.
+             // Assuming admin endpoint for now.
+             await apiClient.delete(`/admin/characters/${characterId}`);
+             setCharacters(prev => prev.filter(char => char.id !== characterId)); // Optimistic update
              toast({
                  title: "Character Deleted",
                  description: "The character has been successfully deleted.",
              });
          } catch (err) {
              console.error("Error deleting character:", err);
+             let errorMsg = "Could not delete the character. Please try again.";
+              if (axios.isAxiosError(err) && err.response?.status === 403) {
+                  errorMsg = "You do not have permission to delete this character.";
+              } else if (axios.isAxiosError(err) && err.response?.status === 404) {
+                  errorMsg = "Character not found.";
+              }
              toast({
                  title: "Deletion Failed",
-                 description: "Could not delete the character. Please try again.",
+                 description: errorMsg,
                  variant: "destructive",
              });
+              // Revert optimistic update if needed, or refetch
+             // fetchMyCharacters();
          } finally {
              setDeletingId(null);
          }
      };
 
-      const togglePublicVisibility = async (character: Character) => {
-         setTogglingId(character.id);
-         const newPublicState = !character.isPublic;
-         try {
-             await updateDoc(doc(db, 'characters', character.id), {
-                 isPublic: newPublicState
-             });
-             toast({
-                 title: "Visibility Updated",
-                 description: `Character is now ${newPublicState ? 'public' : 'private'}.`,
-             });
-         } catch (err) {
-             console.error("Error updating visibility:", err);
-             toast({
-                 title: "Update Failed",
-                 description: "Could not update character visibility.",
-                 variant: "destructive",
-             });
-         } finally {
-             setTogglingId(null);
-         }
-     };
-
+      // Public visibility toggle removed - Assume this is admin controlled via admin update endpoint
 
     const renderSkeleton = () => (
         Array.from({ length: 3 }).map((_, index) => (
@@ -123,7 +132,8 @@ export default function MyCharactersPage() {
                 <TableCell><Skeleton className="h-4 w-32 bg-muted" /></TableCell>
                 <TableCell><Skeleton className="h-6 w-20 bg-muted rounded-full" /></TableCell>
                 <TableCell><Skeleton className="h-4 w-24 bg-muted" /></TableCell>
-                 <TableCell><Skeleton className="h-4 w-16 bg-muted rounded" /></TableCell>
+                 {/* Visibility column removed */}
+                {/* <TableCell><Skeleton className="h-4 w-16 bg-muted rounded" /></TableCell> */}
                 <TableCell><Skeleton className="h-8 w-8 bg-muted rounded" /></TableCell>
             </TableRow>
         ))
@@ -131,12 +141,10 @@ export default function MyCharactersPage() {
 
 
     if (authLoading) {
-        // Show a page-level loader if auth is still loading
-         return <div className="flex justify-center items-center p-16"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
+        return <div className="flex justify-center items-center p-16"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
     }
 
-     if (!user) {
-        // Prompt to login if not authenticated
+     if (!user && !loading) { // Check loading state too
          return (
             <div className="text-center py-16">
                 <p className="text-lg mb-4">Please log in to manage your characters.</p>
@@ -176,7 +184,8 @@ export default function MyCharactersPage() {
                             <TableHead>Name</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Last Updated</TableHead>
-                            <TableHead>Visibility</TableHead>
+                            {/* Visibility column removed */}
+                            {/* <TableHead>Visibility</TableHead> */}
                             <TableHead className="text-right w-[50px]">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -185,7 +194,8 @@ export default function MyCharactersPage() {
                             renderSkeleton()
                          ) : characters.length === 0 ? (
                              <TableRow>
-                                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                                {/* Adjusted colspan */}
+                                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                                     <Bot className="h-8 w-8 mx-auto mb-2"/>
                                      You haven't created any characters yet.
                                      <Link href="/account/characters/new" className="text-primary font-medium hover:underline ml-1">Create one now!</Link>
@@ -196,7 +206,8 @@ export default function MyCharactersPage() {
                                 <TableRow key={char.id}>
                                     <TableCell>
                                          <Avatar className="h-10 w-10">
-                                             <AvatarImage src={char.imageUrl || `https://picsum.photos/seed/${char.id}/40/40`} alt={char.name}/>
+                                            {/* Use image_url from API */}
+                                             <AvatarImage src={char.image_url || `https://picsum.photos/seed/${char.id}/40/40`} alt={char.name}/>
                                              <AvatarFallback>
                                                  {char.name ? char.name.charAt(0).toUpperCase() : '?'}
                                              </AvatarFallback>
@@ -205,37 +216,26 @@ export default function MyCharactersPage() {
                                     <TableCell className="font-medium">{char.name}</TableCell>
                                     <TableCell>
                                          <Badge variant={getStatusBadgeVariant(char.status)}>{char.status}</Badge>
-                                         {char.status === 'Rejected' && char.adminFeedback && (
-                                            <p className="text-xs text-muted-foreground mt-1 italic truncate" title={char.adminFeedback}>
-                                                Reason: {char.adminFeedback}
-                                            </p>
-                                         )}
+                                         {/* Admin Feedback might not be directly available in this endpoint, adjust if needed */}
+                                         {/* {char.status === 'Rejected' && char.adminFeedback && ( ... )} */}
                                      </TableCell>
                                     <TableCell>
-                                         {char.updatedAt?.toDate ? format(char.updatedAt.toDate(), 'PPp') : 'N/A'}
+                                         {/* Use updatedAt from API, parse ISO string */}
+                                         {char.updatedAt ? format(parseISO(char.updatedAt), 'PPp') : 'N/A'}
                                     </TableCell>
-                                      <TableCell>
+                                    {/* Visibility Cell Removed */}
+                                    {/*
+                                     <TableCell>
                                          {char.status === 'Approved' ? (
-                                             <Button
-                                                 variant="ghost"
-                                                 size="sm"
-                                                 onClick={() => togglePublicVisibility(char)}
-                                                 disabled={togglingId === char.id}
-                                                 className={cn("flex items-center gap-1 px-2 h-8", char.isPublic ? 'text-green-600 hover:text-green-700' : 'text-muted-foreground hover:text-foreground')}
-                                             >
-                                                 {togglingId === char.id ? (
-                                                     <Loader2 className="h-4 w-4 animate-spin" />
-                                                 ) : char.isPublic ? (
-                                                     <Eye className="h-4 w-4" />
-                                                 ) : (
-                                                     <EyeOff className="h-4 w-4" />
-                                                 )}
-                                                 {char.isPublic ? 'Public' : 'Private'}
-                                             </Button>
+                                             <div className="flex items-center gap-1">
+                                                  {char.isPublic ? <Eye className="h-4 w-4 text-green-600"/> : <EyeOff className="h-4 w-4 text-muted-foreground"/>}
+                                                  {char.isPublic ? 'Public' : 'Private'}
+                                             </div>
                                          ) : (
                                              <span className="text-sm text-muted-foreground italic">N/A</span>
                                          )}
-                                    </TableCell>
+                                     </TableCell>
+                                    */}
                                     <TableCell className="text-right">
                                          <AlertDialog>
                                              <DropdownMenu>
@@ -248,13 +248,15 @@ export default function MyCharactersPage() {
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                                     <DropdownMenuSeparator />
-                                                     {/* Edit only available for Draft/Rejected */}
-                                                     <DropdownMenuItem asChild disabled={!(char.status === 'Draft' || char.status === 'Rejected')}>
+                                                     {/* Edit only available for Pending/Rejected? API might differ from Firestore 'Draft' */}
+                                                     {/* Check if API allows editing 'Pending' or only 'Rejected' */}
+                                                     <DropdownMenuItem asChild disabled={!(char.status === 'Pending' || char.status === 'Rejected')}>
                                                         <Link href={`/account/characters/edit/${char.id}`}>
                                                              <Edit className="mr-2 h-4 w-4" /> Edit
                                                          </Link>
                                                      </DropdownMenuItem>
                                                     <AlertDialogTrigger asChild>
+                                                         {/* Add check for user permission if delete is user-specific */}
                                                          <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" disabled={deletingId === char.id}>
                                                              <Trash2 className="mr-2 h-4 w-4" /> Delete
                                                          </DropdownMenuItem>
@@ -291,6 +293,3 @@ export default function MyCharactersPage() {
         </Card>
     );
 }
-
-// Need buttonVariants import for AlertDialogAction styling
-import { buttonVariants } from "@/components/ui/button";

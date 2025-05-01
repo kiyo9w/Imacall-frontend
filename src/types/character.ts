@@ -1,9 +1,7 @@
-import type { Timestamp } from 'firebase/firestore';
-
 // Represents the overall status of a character
-export type CharacterStatus = 'Draft' | 'Pending' | 'Approved' | 'Rejected';
+export type CharacterStatus = 'Pending' | 'Approved' | 'Rejected';
 
-// Categories for characters
+// Categories might be handled differently in FastAPI, adjust if needed
 export enum CharacterCategory {
     FANTASY = 'Fantasy',
     SCI_FI = 'Sci-Fi',
@@ -15,68 +13,126 @@ export enum CharacterCategory {
     CUSTOM = 'Custom'
 }
 
-// Basic character data structure (V1 + initial V2 fields)
-export interface Character {
-    id: string; // Firestore document ID
-    userId: string; // ID of the user who created the character
-    creatorType: 'User' | 'Admin'; // Who created the character
+
+// Matches CharacterPublic schema from FastAPI
+export interface CharacterPublic {
     name: string;
-    description: string; // Short description/tagline
-    imageUrl?: string; // URL for the character's avatar/image
+    description?: string | null;
+    image_url?: string | null; // Renamed from imageUrl
+    greeting_message?: string | null; // Renamed from greetingMessage
+    id: string; // UUID
     status: CharacterStatus;
-    createdAt: Timestamp;
-    updatedAt: Timestamp;
-
-    // V1 Detail Fields
-    greetingMessage: string; // Initial message the character sends
-    scenario?: string; // Context or setting for the interaction
-    category: CharacterCategory;
-    language?: string; // Primary language (e.g., 'en', 'es')
-    tags?: string[]; // Searchable tags
-    voiceId?: string; // Identifier for the TTS voice to use
-
-    // V1 Admin/Platform Managed Fields
-    isPublic: boolean; // Whether the character is visible in the public browser
-    isFeatured?: boolean; // If the character is featured by admins
-    adminFeedback?: string; // Reason for rejection or other admin notes
-
-    // V2 Fields
-    popularityScore?: number; // Calculated score based on interactions, ratings, etc.
-    averageRating?: number; // Average star rating from users
-    ratingCount?: number; // Number of ratings received
-
-    // V3 Fields (Placeholders for future implementation)
-    // personalityTraits?: string[];
-    // backgroundStory?: string;
-    // knowledgeScope?: string;
-    // quirks?: string[];
-    // emotionalRange?: string;
-    // allowRemixing?: boolean;
-    // shareLink?: string;
-
+    creator_id: string; // UUID, renamed from userId
+    // Add other fields from the API schema as needed
+    // e.g., category, tags, etc. if they are part of CharacterPublic
+    category?: CharacterCategory | null; // Assuming category is returned
+    tags?: string[] | null; // Assuming tags are returned as an array
+    averageRating?: number | null; // Assuming these are returned
+    ratingCount?: number | null; // Assuming these are returned
+    isPublic?: boolean | null; // Assuming this is returned
+    createdAt?: string | null; // ISO Date string
+    updatedAt?: string | null; // ISO Date string
 }
 
-// Data structure for user ratings/reviews (V2)
+
+// Matches CharacterCreate schema from FastAPI
+export interface CharacterCreate {
+    name: string;
+    description?: string | null;
+    image_url?: string | null;
+    greeting_message?: string | null;
+    // Add other creation fields like category, tags if they are part of CharacterCreate
+    category?: CharacterCategory | null;
+    tags?: string[] | null;
+    scenario?: string | null; // Assuming scenario is part of create
+    language?: string | null; // Assuming language is part of create
+}
+
+// Matches CharacterUpdate schema from FastAPI (Admin)
+export interface CharacterUpdateAdmin {
+    name?: string | null;
+    description?: string | null;
+    image_url?: string | null;
+    greeting_message?: string | null;
+    status?: CharacterStatus | null;
+     // Add other updatable fields like category, tags, isPublic if part of the admin update schema
+    category?: CharacterCategory | null;
+    tags?: string[] | null;
+    scenario?: string | null;
+    language?: string | null;
+    isPublic?: boolean | null;
+    adminFeedback?: string | null; // Assuming feedback is part of update
+}
+
+// Simplified CharacterUpdate for user edits (if applicable, otherwise use Admin version if users can edit pending/rejected)
+// If users can ONLY edit Draft/Rejected, the backend might need a separate endpoint or logic.
+// Assuming users can update fields on pending/rejected via a dedicated or the admin endpoint (with permission checks).
+export type CharacterUpdate = CharacterUpdateAdmin;
+
+
+// Data structure for user ratings/reviews (V2) - Adapt if API schema differs
+// Assuming a similar structure for now, adjust based on actual API.
 export interface CharacterReview {
-    id: string; // Firestore document ID
+    id: string; // Firestore document ID or API equivalent (e.g., UUID)
     characterId: string; // ID of the character being reviewed
     userId: string; // ID of the user submitting the review
-    displayName?: string; // User's display name at the time of review
-    userAvatarUrl?: string; // User's avatar URL at the time of review
+    displayName?: string | null; // User's display name at the time of review
+    userAvatarUrl?: string | null; // User's avatar URL at the time of review
     rating: number; // Star rating (e.g., 1-5)
-    reviewText?: string; // Optional text comment
-    createdAt: Timestamp;
+    reviewText?: string | null; // Optional text comment
+    createdAt: string; // ISO Date string from API
 }
 
-// Data for the character creation/edit form (combines fields)
-export type CharacterFormData = Pick<Character,
-    'name' |
-    'description' |
-    'greetingMessage' |
-    'scenario' |
-    'category' |
-    'language' |
-    'tags'
-    // imageUrl is handled separately via file upload
-    // voiceId might be selected from a list
->;
+// Data for the character creation/edit form
+// Map from API CharacterCreate/Update types
+export interface CharacterFormData {
+    name: string;
+    description: string;
+    greetingMessage: string;
+    scenario?: string;
+    category?: CharacterCategory;
+    language?: string;
+    tags?: string; // Keep as comma-separated string for form input, transform on submit
+    imageUrl?: string | null; // Keep image URL for preview/existing
+}
+
+
+// Matches MessagePublic schema
+export interface MessagePublic {
+    content: string;
+    id: string; // UUID
+    conversation_id: string; // UUID
+    sender: 'user' | 'character' | 'system'; // Adjust if enum differs
+    timestamp: string; // ISO Date string
+}
+
+// Matches ConversationPublic schema
+export interface ConversationPublic {
+    id: string; // UUID
+    user_id: string; // UUID
+    character_id: string; // UUID
+    created_at: string; // ISO Date string
+     // Add fields like last_message_at, character_name, character_image_url if backend provides them
+    lastInteractionAt?: string; // Example, adjust name based on API
+    characterName?: string; // Example
+    characterImageUrl?: string | null; // Example
+}
+
+// Matches MessagesPublic schema
+export interface MessagesPublic {
+    data: MessagePublic[];
+    count: number;
+}
+
+// Matches ConversationsPublic schema
+export interface ConversationsPublic {
+    data: ConversationPublic[];
+    count: number;
+}
+
+
+// Utility type for API responses with pagination
+export interface PaginatedResponse<T> {
+    data: T[];
+    count: number;
+}
