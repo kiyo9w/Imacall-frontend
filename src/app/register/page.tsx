@@ -56,22 +56,21 @@ export default function RegisterPage() {
       // router.push(redirectPath); // No longer needed here
     } catch (err: any) {
       console.error('Registration Error:', err);
+       // Use the error message thrown from AuthContext
       setError(err.message || 'Registration failed. Please try again.');
     }
   };
 
-  // Google Sign-In is removed
-
   return (
-    <div className="flex justify-center items-center py-12">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Create an Account</CardTitle>
+    <div className="flex flex-1 items-center justify-center py-12 px-4">
+      <Card className="w-full max-w-md shadow-xl transition-shadow hover:shadow-2xl"> {/* Increased shadow */}
+        <CardHeader className="text-center space-y-1"> {/* Added space-y-1 */}
+          <CardTitle className="text-2xl font-bold">Create an Account</CardTitle>
           <CardDescription>Join Imacall today!</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4"> {/* Added space-y-4 */}
           {error && (
-            <Alert variant="destructive" className="mb-4">
+            <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Registration Failed</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
@@ -122,13 +121,14 @@ export default function RegisterPage() {
               {loading ? 'Creating Account...' : 'Register'}
             </Button>
           </form>
-          {/* Remove Google Sign-In button */}
         </CardContent>
-        <CardFooter className="flex justify-center text-sm">
-          Already have an account?&nbsp;
-          <Link href="/login" className="text-primary hover:underline flex items-center">
-            <LogIn className="mr-1 h-4 w-4" /> Login
-          </Link>
+        <CardFooter className="flex flex-col gap-2 text-center text-sm"> {/* Changed flex direction */}
+           <span>Already have an account?</span>
+           <Button variant="link" asChild className="p-0 h-auto">
+              <Link href="/login">
+                 <LogIn className="mr-1 h-4 w-4" /> Login Instead
+              </Link>
+           </Button>
         </CardFooter>
       </Card>
     </div>

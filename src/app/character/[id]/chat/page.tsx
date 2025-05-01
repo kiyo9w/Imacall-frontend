@@ -14,17 +14,31 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CardHeader, CardTitle, CardFooter } from '@/components/ui/card'; // Removed Card, CardContent
+import { CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, Send, ArrowLeft, Bot, User as UserIcon, AlertCircle } from 'lucide-react';
+import { Loader2, Send, ArrowLeft, Bot, User as UserIcon, AlertCircle, MessageSquare } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isToday, isYesterday } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import axios from 'axios';
+import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
 
-const MESSAGES_PER_LOAD = 20;
+const MESSAGES_PER_LOAD = 30; // Load more messages at once
+
+// Helper to format timestamp for display
+const formatTimestamp = (isoString: string) => {
+    const date = parseISO(isoString);
+    if (isToday(date)) {
+        return format(date, 'p'); // e.g., 2:30 PM
+    }
+    if (isYesterday(date)) {
+        return `Yesterday ${format(date, 'p')}`; // e.g., Yesterday 10:15 AM
+    }
+    return format(date, 'MMM d, p'); // e.g., May 1, 2:30 PM
+};
+
 
 export default function ChatPage() {
     const params = useParams();
@@ -35,6 +49,7 @@ export default function ChatPage() {
     const characterId = params.id as string;
     const scrollAreaRef = useRef<HTMLDivElement>(null);
     const viewportRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null); // Ref for input focus
 
     const [character, setCharacter] = useState<CharacterPublic | null>(null);
     const [messages, setMessages] = useState<MessagePublic[]>([]);
@@ -46,7 +61,8 @@ export default function ChatPage() {
     const [conversationId, setConversationId] = useState<string | null>(searchParams.get('conversationId'));
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMoreMessages, setHasMoreMessages] = useState(true);
-    const [totalMessages, setTotalMessages] = useState(0); // To track total for pagination
+    const [totalMessages, setTotalMessages] = useState(0);
+    const [isAtBottom, setIsAtBottom] = useState(true); // Track scroll position
 
 
     // 1. Fetch Character Details
@@ -56,7 +72,6 @@ export default function ChatPage() {
             setLoadingCharacter(true);
             setError(null);
             try {
-                // Use the public endpoint for approved characters
                 const response = await apiClient.get<CharacterPublic>(`/characters/${characterId}`);
                 setCharacter(response.data);
             } catch (err) {
@@ -89,20 +104,24 @@ export default function ChatPage() {
                     params: {
                         skip: currentMessagesCount,
                         limit: MESSAGES_PER_LOAD,
-                        // Add sort params if needed, e.g., sort_by=timestamp&sort_dir=asc
+                        // Assuming API returns newest first, adjust if needed
+                         // sort_by: 'timestamp',
+                         // sort_dir: 'desc' // Get newest first for pagination
                     }
                 }
             );
-             const fetchedMessages = response.data.data;
-            // Assuming API returns messages oldest first, otherwise reverse here
-             // fetchedMessages.sort((a,b) => parseISO(a.timestamp).getTime() - parseISO(b.timestamp).getTime());
+            // If API returns oldest first, reverse for display (newest at bottom)
+             const fetchedMessages = response.data.data.reverse(); // Reverse here if API sends oldest first
+            // If API returns newest first, simply use response.data.data
 
-            setMessages(prev => loadMore ? [...prev, ...fetchedMessages] : fetchedMessages);
-            setTotalMessages(response.data.count);
-            setHasMoreMessages((loadMore ? messages.length : 0) + fetchedMessages.length < response.data.count);
+            const totalCount = response.data.count;
+            setMessages(prev => loadMore ? [...fetchedMessages, ...prev] : fetchedMessages);
+            setTotalMessages(totalCount);
+            setHasMoreMessages(messages.length + fetchedMessages.length < totalCount);
 
             if (!loadMore) {
-                scrollToBottom('auto'); // Instant scroll on initial load
+                // Only scroll to bottom instantly on initial load
+                scrollToBottom('auto');
             }
 
         } catch (err) {
@@ -111,80 +130,92 @@ export default function ChatPage() {
             if (axios.isAxiosError(err) && err.response?.status === 404) {
                 setError("Conversation not found or you don't have access.");
                  setConversationId(null); // Reset conversation ID if not found
+            } else if (axios.isAxiosError(err) && err.response?.status === 401) {
+                 setError("Authentication required to view messages.");
             }
         } finally {
             setLoadingMessages(false);
             setLoadingMore(false);
         }
-    }, [messages.length]); // Include messages.length for pagination skip calculation
+    }, [messages.length]); // messages.length dependency for skip calculation
 
-
-     // Start conversation or fetch initial messages
     useEffect(() => {
         if (!user || !characterId || authLoading) return;
 
         if (conversationId) {
-            console.log("Fetching messages for existing conversation:", conversationId);
             fetchMessages(conversationId, false);
         } else {
-             // No conversation ID, implies we might need to start one before sending the first message
-             // For now, disable sending until a conversation is potentially started
-             console.log("No conversation ID found in URL.");
-             setLoadingMessages(false); // Stop loading indicator
-             setMessages([]); // Ensure messages are empty
+             setLoadingMessages(false);
+             setMessages([]);
              setHasMoreMessages(false);
-             // Optionally, show a button or prompt to "Start Conversation"
         }
-         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user, characterId, authLoading, conversationId, fetchMessages]); // Rerun if conversationId changes
 
-
-    // 3. Scroll to Bottom Helper
+    // 3. Scroll Management
     const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
-        setTimeout(() => {
+        setTimeout(() => { // Delay ensures DOM update before scrolling
             if (viewportRef.current) {
                 viewportRef.current.scrollTo({ top: viewportRef.current.scrollHeight, behavior });
             }
-        }, 100); // Adjust delay if needed
+        }, 50);
     };
 
-    // Scroll to bottom when new messages are added (if near bottom)
+    // Scroll to bottom when new messages are added *only if already near the bottom*
     useEffect(() => {
-         if (!loadingMessages && viewportRef.current) {
-             const { scrollTop, scrollHeight, clientHeight } = viewportRef.current;
-             // Scroll if user is close to the bottom (e.g., within 200px)
-             if (scrollHeight - scrollTop - clientHeight < 200) {
-                 scrollToBottom('smooth');
-             }
+        if (isAtBottom && !loadingMessages) {
+            scrollToBottom('smooth');
+        }
+    }, [messages.length, loadingMessages, isAtBottom]); // Depend on messages length, loading state, and scroll position
+
+    // Track scroll position
+     const handleScroll = useCallback(() => {
+         if (!viewportRef.current) return;
+         const { scrollTop, scrollHeight, clientHeight } = viewportRef.current;
+         const atBottom = scrollHeight - scrollTop - clientHeight < 50; // Threshold for being "at the bottom"
+         setIsAtBottom(atBottom);
+
+         // Load more when scrolling near the top
+         if (scrollTop < 100 && hasMoreMessages && !loadingMore && !loadingMessages && conversationId) {
+             fetchMessages(conversationId, true);
          }
-     }, [messages.length, loadingMessages]); // Depend on messages length and loading state
+     }, [hasMoreMessages, loadingMore, loadingMessages, conversationId, fetchMessages]);
+
+     // Add scroll listener
+     useEffect(() => {
+         const currentViewport = viewportRef.current;
+         if (currentViewport) {
+             currentViewport.addEventListener('scroll', handleScroll);
+             return () => currentViewport.removeEventListener('scroll', handleScroll);
+         }
+     }, [handleScroll]);
 
 
      // Function to start a new conversation
      const startConversation = async (): Promise<string | null> => {
         if (!user || !characterId) return null;
-        setSending(true); // Indicate loading state
+        setSending(true);
         setError(null);
         try {
-            console.log("Attempting to start conversation with character:", characterId);
             const response = await apiClient.post<ConversationPublic>('/conversations/', { character_id: characterId });
             const newConvId = response.data.id;
-            console.log("Conversation started:", newConvId);
             setConversationId(newConvId);
-            // Update URL without full page reload
             router.replace(`/character/${characterId}/chat?conversationId=${newConvId}`, { scroll: false });
             return newConvId;
         } catch (err) {
             console.error("Error starting conversation:", err);
-            setError("Could not start a new conversation. Please try again.");
-             toast({ title: "Error", description: "Could not start conversation.", variant: "destructive" });
+            let errorMsg = "Could not start a new conversation. Please try again.";
+            if (axios.isAxiosError(err) && err.response?.status === 401) {
+                errorMsg = "Authentication required to start conversation.";
+            } else if (axios.isAxiosError(err) && err.response?.status === 404) {
+                errorMsg = "Character not found or cannot be chatted with.";
+            }
+            setError(errorMsg);
+             toast({ title: "Error", description: errorMsg, variant: "destructive" });
             return null;
         } finally {
-            // Keep sending true until message is actually sent
-            // setSending(false);
+            // Keep sending true until message is actually sent in handleSendMessage
         }
     };
-
 
     // 4. Handle Sending Message
     const handleSendMessage = async (e?: FormEvent) => {
@@ -197,98 +228,144 @@ export default function ChatPage() {
         if (!currentConvId) {
              currentConvId = await startConversation();
              if (!currentConvId) {
-                 setSending(false); // Ensure sending is false if starting failed
-                 return; // Stop if conversation couldn't be started
+                 setSending(false); // Reset sending state if starting failed
+                 return;
              }
+             // Ensure messages list is empty if starting new
+             setMessages([]);
+             setTotalMessages(0);
+             setHasMoreMessages(false); // No history yet
         }
 
         setSending(true);
         const textToSend = newMessage.trim();
+        setNewMessage(''); // Clear input immediately
 
-         // Optimistic UI update
         const optimisticUserMessage: MessagePublic = {
-             id: `temp-${Date.now()}`, // Temporary ID
+             id: `temp-${Date.now()}`,
              conversation_id: currentConvId,
-             userId: user.id, // Use user.id from AuthContext
-             characterId: characterId, // Store for context if needed, though API uses conversation_id
              sender: 'user',
              content: textToSend,
-             timestamp: new Date().toISOString(), // Use ISO string for consistency
+             timestamp: new Date().toISOString(),
+             // Include userId/characterId if needed by frontend logic, though API uses conversation_id
+             // userId: user.id,
+             // characterId: characterId,
         };
-         setMessages(prev => [...prev, optimisticUserMessage]);
-        setNewMessage(''); // Clear input immediately
-        scrollToBottom();
+
+        setMessages(prev => [...prev, optimisticUserMessage]);
+        scrollToBottom('smooth'); // Scroll smoothly when sending
 
         try {
-            // Call API to send message
             const response = await apiClient.post<MessagePublic>(
                 `/conversations/${currentConvId}/messages`,
                 { content: textToSend }
             );
+            const aiResponse = response.data;
 
-            const aiResponse = response.data; // API should return the AI's response message
-
-             // Replace optimistic user message with actual one? Not strictly necessary if API doesn't return it.
-             // Add AI response
-             // Ensure AI response is correctly formatted as MessagePublic
-             if (aiResponse && aiResponse.sender === 'character') { // Or whatever sender type API uses
-                setMessages(prev => [...prev.filter(m => m.id !== optimisticUserMessage.id), aiResponse]); // Replace temp message or just add AI response
+            if (aiResponse && aiResponse.sender === 'character') {
+                 // Replace optimistic message with potentially nothing (if API only returns AI response)
+                 // then add the AI response
+                setMessages(prev => [
+                    ...prev.filter(m => m.id !== optimisticUserMessage.id),
+                    aiResponse // Add the AI's message from the response
+                ]);
              } else {
-                 // Handle cases where API might return user message or something else unexpected
                  console.warn("Received unexpected response format after sending message:", response.data);
-                 // Remove optimistic message if AI response wasn't received correctly
-                  setMessages(prev => prev.filter(m => m.id !== optimisticUserMessage.id));
+                  // If API unexpectedly returned the user message instead of AI, update ID
+                  if(response.data && response.data.id && response.data.sender === 'user' && response.data.content === textToSend) {
+                     setMessages(prev => prev.map(m => m.id === optimisticUserMessage.id ? response.data : m));
+                  } else {
+                     // Remove optimistic message if AI response wasn't valid
+                     setMessages(prev => prev.filter(m => m.id !== optimisticUserMessage.id));
+                  }
              }
 
         } catch (err) {
             console.error("Error sending message:", err);
-            setError("Failed to send message.");
-            toast({
-                title: "Send Error",
-                description: "Failed to send message. Please try again.",
-                variant: "destructive",
-            });
-            // Remove optimistic message on error
+            let errorMsg = "Failed to send message. Please try again.";
+             if (axios.isAxiosError(err) && err.response?.status === 401) {
+                 errorMsg = "Authentication error sending message.";
+             } else if (axios.isAxiosError(err) && err.response?.status === 403) {
+                 errorMsg = "You don't have permission for this conversation.";
+             } else if (axios.isAxiosError(err) && err.response?.status === 422) {
+                  errorMsg = "Message content invalid or too long.";
+             }
+            setError(errorMsg); // Display error to user potentially
+            toast({ title: "Send Error", description: errorMsg, variant: "destructive" });
+            // Remove optimistic message and restore input content
              setMessages(prev => prev.filter(m => m.id !== optimisticUserMessage.id));
-             setNewMessage(textToSend); // Put message back in input
+             setNewMessage(textToSend);
         } finally {
             setSending(false);
-            scrollToBottom();
+            inputRef.current?.focus(); // Refocus input after sending
         }
     };
 
-    // Function to load older messages (pagination)
-    const loadMore = () => {
-        if (conversationId && hasMoreMessages && !loadingMore) {
-            fetchMessages(conversationId, true);
-        }
-    };
 
-     // Loading states
+    // Loading skeleton for messages
+    const renderMessageSkeleton = (count = 5) => (
+         <div className="space-y-6 p-4">
+             {Array.from({ length: count }).map((_, i) => (
+                <div key={i} className={cn("flex items-end gap-2", i % 2 === 0 ? 'justify-start' : 'justify-end')}>
+                    {i % 2 === 0 && <Skeleton className="h-8 w-8 rounded-full bg-muted" />}
+                    <div className={cn("max-w-[70%] rounded-lg p-3 space-y-1", i % 2 === 0 ? 'bg-card' : 'bg-primary/10')}>
+                        <Skeleton className="h-3 w-32 bg-muted" />
+                         <Skeleton className="h-3 w-24 bg-muted" />
+                    </div>
+                    {i % 2 !== 0 && <Skeleton className="h-8 w-8 rounded-full bg-muted" />}
+                </div>
+             ))}
+         </div>
+    );
+
+     // Combined loading states
      if (authLoading || loadingCharacter) {
-        return <div className="flex justify-center items-center h-screen"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
+        return (
+            <div className="flex flex-col h-[calc(100vh-4rem)]">
+                 {/* Skeleton Header */}
+                 <CardHeader className="flex flex-row items-center gap-4 p-3 border-b bg-card sticky top-16 z-10">
+                     <Skeleton className="h-9 w-9 rounded-md bg-muted" />
+                     <Skeleton className="h-10 w-10 rounded-full bg-muted" />
+                     <div className="flex-grow space-y-1">
+                         <Skeleton className="h-5 w-32 bg-muted" />
+                     </div>
+                 </CardHeader>
+                 <div className="flex-grow flex items-center justify-center">
+                    <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                 </div>
+                 {/* Skeleton Footer */}
+                 <CardFooter className="p-4 border-t bg-card sticky bottom-0">
+                      <div className="flex w-full items-center gap-2">
+                         <Skeleton className="h-10 flex-grow bg-muted rounded-md"/>
+                         <Skeleton className="h-10 w-10 bg-muted rounded-md"/>
+                      </div>
+                 </CardFooter>
+            </div>
+        );
      }
 
      // Not logged in
      if (!user && !authLoading) {
          return (
-             <div className="flex flex-col items-center justify-center h-screen text-center">
-                 <p className="text-lg mb-4">Please log in to chat with characters.</p>
+             <div className="flex flex-col items-center justify-center h-[calc(100vh-4rem)] text-center p-4">
+                 <UserIcon className="h-16 w-16 text-muted-foreground mb-4"/>
+                 <p className="text-lg font-medium mb-2">Login Required</p>
+                 <p className="text-muted-foreground mb-6">Please log in to start chatting with characters.</p>
                  <Button asChild>
-                     <Link href={`/login?redirect=/character/${characterId}/chat${conversationId ? `?conversationId=${conversationId}` : ''}`}>Login</Link>
+                     <Link href={`/login?redirect=${encodeURIComponent(pathname + searchParams.toString())}`}>Login</Link>
                  </Button>
              </div>
          );
      }
 
      // Error state
-    if (error) {
+    if (error && !loadingMessages) { // Show error only if not also loading
         return (
             <div className="container mx-auto px-4 py-16 text-center">
                 <AlertCircle className="h-12 w-12 mx-auto mb-4 text-destructive" />
-                <h2 className="text-2xl font-semibold mb-2">Error</h2>
-                <p className="text-muted-foreground">{error}</p>
-                <Button asChild variant="outline" className="mt-6">
+                <h2 className="text-2xl font-semibold mb-2">Chat Error</h2>
+                <p className="text-muted-foreground mb-6">{error}</p>
+                <Button asChild variant="outline">
                      <Link href={`/character/${characterId}`}>
                         <ArrowLeft className="mr-2 h-4 w-4"/> Back to Character
                      </Link>
@@ -304,122 +381,132 @@ export default function ChatPage() {
 
 
     return (
-        <div className="flex flex-col h-[calc(100vh-4rem)] bg-background"> {/* Full height minus header */}
+        <div className="flex flex-col h-[calc(100vh-4rem)] bg-secondary/30"> {/* Slightly off-white background */}
             {/* Chat Header */}
-            <CardHeader className="flex flex-row items-center gap-4 p-3 border-b bg-card sticky top-16 z-10"> {/* Reduced padding */}
-                 <Button variant="ghost" size="icon" asChild className="mr-1"> {/* Reduced margin */}
-                      {/* Link back to character detail page */}
-                      <Link href={`/character/${characterId}`}>
+            <CardHeader className="flex flex-row items-center gap-3 p-3 border-b bg-card sticky top-16 z-10 shadow-sm">
+                 <Button variant="ghost" size="icon" asChild className="mr-1 text-muted-foreground hover:text-foreground">
+                      <Link href={`/character/${characterId}`} aria-label="Back to character">
                          <ArrowLeft />
                       </Link>
                  </Button>
                  {character && (
                      <>
-                        <Avatar className="h-10 w-10"> {/* Slightly smaller avatar */}
+                        <Avatar className="h-10 w-10 border">
                             <AvatarImage src={character.image_url || `https://picsum.photos/seed/${character.id}/40/40`} alt={character.name} />
-                            <AvatarFallback><Bot size={18} /></AvatarFallback>
+                            <AvatarFallback className="bg-muted text-muted-foreground"><Bot size={18} /></AvatarFallback>
                         </Avatar>
                         <div className="flex-grow">
-                            <CardTitle className="text-lg">{character.name}</CardTitle>
-                            {/* Optional: Add status */}
+                            <CardTitle className="text-base font-semibold">{character.name}</CardTitle>
+                            {/* Optional: Add online status or typing indicator */}
+                            <p className="text-xs text-green-600">Online</p>
                         </div>
+                        {/* Optional: Header actions (e.g., call button - disabled) */}
+                         <Button variant="ghost" size="icon" className="text-muted-foreground" disabled>
+                             <Phone size={18} />
+                         </Button>
                      </>
                  )}
             </CardHeader>
 
             {/* Chat Messages Area */}
-            <ScrollArea className="flex-grow" viewportRef={viewportRef} ref={scrollAreaRef}>
-                 <div className="p-4 space-y-4"> {/* Add padding here */}
-                     {/* Load More Button */}
-                     {hasMoreMessages && !loadingMessages && (
-                        <div className="text-center mb-4">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={loadMore}
-                                disabled={loadingMore}
-                            >
-                                {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : "Load Older Messages"}
-                            </Button>
-                        </div>
-                     )}
-
-                     {loadingMessages ? (
-                         <div className="flex justify-center items-center pt-10">
-                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                         </div>
-                      ) : messages.length === 0 && !conversationId ? (
-                          <div className="text-center text-muted-foreground pt-10">
-                             <MessageSquare size={40} className="mx-auto mb-2"/>
-                             <p>Send a message to start the conversation.</p>
-                           </div>
-                      ) : messages.length === 0 && conversationId ? (
-                           <div className="text-center text-muted-foreground pt-10">
-                              <MessageSquare size={40} className="mx-auto mb-2"/>
-                              <p>No messages in this conversation yet.</p>
-                            </div>
-                     ) : (
-                        messages.map((msg) => (
-                            <div
-                                key={msg.id} // Use message ID from API
-                                className={cn(
-                                    "flex items-end gap-2",
-                                    msg.sender === 'user' ? 'justify-end' : 'justify-start'
-                                )}
-                            >
-                                {msg.sender !== 'user' && character && ( // Show character avatar for non-user messages
-                                    <Avatar className="h-8 w-8">
-                                        <AvatarImage src={character.image_url || `https://picsum.photos/seed/${character.id}/40/40`} />
-                                        <AvatarFallback><Bot size={16} /></AvatarFallback>
-                                    </Avatar>
-                                )}
-                                <div
-                                    className={cn(
-                                        "max-w-[75%] rounded-lg px-3 py-2 shadow-sm", // Increased max-width
-                                        msg.sender === 'user'
-                                            ? 'bg-primary text-primary-foreground'
-                                            : 'bg-card border',
-                                         msg.id.startsWith('temp-') ? 'opacity-70' : '' // Dim optimistic message
-                                    )}
-                                >
-                                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                                    <p className={cn("text-xs mt-1 text-right",
-                                        msg.sender === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground',
-                                     )}>
-                                         {/* Format timestamp from ISO string */}
-                                         {msg.id.startsWith('temp-') ? 'Sending...' : format(parseISO(msg.timestamp), 'p')}
-                                    </p>
+            <ScrollArea className="flex-grow bg-background/80 backdrop-blur-sm" viewportRef={viewportRef} ref={scrollAreaRef} onScroll={handleScroll}>
+                 <div className="p-4 space-y-6"> {/* Increased spacing */}
+                     {/* Load More Spinner/Button */}
+                      {loadingMessages ? (
+                          renderMessageSkeleton()
+                      ) : (
+                         <>
+                             {loadingMore ? (
+                                <div className="flex justify-center py-4"><Loader2 className="h-6 w-6 animate-spin text-primary"/></div>
+                             ) : hasMoreMessages && (
+                                <div className="text-center mb-4">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => fetchMessages(conversationId!, true)}
+                                        className="text-xs"
+                                    >
+                                        Load Older Messages
+                                    </Button>
                                 </div>
-                                 {msg.sender === 'user' && user && (
-                                    <Avatar className="h-8 w-8">
-                                         {/* Use user's avatar if available (not in current UserPublic) */}
-                                        {/* <AvatarImage src={user.photoURL || undefined} /> */}
-                                        <AvatarFallback>
-                                             {user.full_name ? user.full_name.charAt(0).toUpperCase() : <UserIcon size={16} />}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                )}
-                            </div>
-                        ))
-                    )}
+                             )}
+
+                             {messages.length === 0 && !conversationId ? (
+                                 <div className="text-center text-muted-foreground pt-10 flex flex-col items-center">
+                                     <MessageSquare size={40} className="mb-3 opacity-50"/>
+                                     <p>Send the first message to start the conversation.</p>
+                                 </div>
+                             ) : messages.length === 0 && conversationId ? (
+                                 <div className="text-center text-muted-foreground pt-10 flex flex-col items-center">
+                                     <MessageSquare size={40} className="mb-3 opacity-50"/>
+                                     <p>No messages yet.</p>
+                                 </div>
+                             ) : (
+                                messages.map((msg, index) => (
+                                    <div
+                                        key={msg.id}
+                                        className={cn(
+                                            "flex items-end gap-2 animate-in fade-in slide-in-from-bottom-4 duration-300",
+                                            msg.sender === 'user' ? 'justify-end' : 'justify-start'
+                                        )}
+                                        style={{ animationDelay: `${Math.min(index * 50, 500)}ms` }} // Stagger animation slightly
+                                    >
+                                        {msg.sender !== 'user' && character && (
+                                            <Avatar className="h-8 w-8 self-end"> {/* Align avatar bottom */}
+                                                <AvatarImage src={character.image_url || `https://picsum.photos/seed/${character.id}/32/32`} />
+                                                <AvatarFallback className="bg-muted text-muted-foreground"><Bot size={16} /></AvatarFallback>
+                                            </Avatar>
+                                        )}
+                                        <div
+                                            className={cn(
+                                                "max-w-[75%] rounded-lg px-3.5 py-2 shadow-sm relative",
+                                                msg.sender === 'user'
+                                                    ? 'bg-primary text-primary-foreground rounded-br-none' // Tail for user message
+                                                    : 'bg-card border rounded-bl-none', // Tail for AI message
+                                                msg.id.startsWith('temp-') ? 'opacity-70' : ''
+                                            )}
+                                        >
+                                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                                            <p className={cn("text-[10px] mt-1.5 text-right",
+                                                msg.sender === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground',
+                                            )}>
+                                                 {msg.id.startsWith('temp-') ? 'Sending...' : formatTimestamp(msg.timestamp)}
+                                            </p>
+                                        </div>
+                                         {msg.sender === 'user' && user && (
+                                            <Avatar className="h-8 w-8 self-end"> {/* Align avatar bottom */}
+                                                 {/* Add user avatar if available */}
+                                                {/* <AvatarImage src={user.avatarUrl} /> */}
+                                                <AvatarFallback className="bg-secondary text-secondary-foreground">
+                                                     {user.full_name ? user.full_name.charAt(0).toUpperCase() : <UserIcon size={16} />}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                        )}
+                                    </div>
+                                ))
+                            )}
+                         </>
+                      )}
+
                  </div> {/* End padding div */}
             </ScrollArea>
 
             {/* Message Input Area */}
-            <CardFooter className="p-4 border-t bg-card sticky bottom-0">
+            <CardFooter className="p-3 border-t bg-card sticky bottom-0">
                 <form onSubmit={handleSendMessage} className="flex w-full items-center gap-2">
                     <Input
+                        ref={inputRef}
                         type="text"
                         placeholder="Type your message..."
                         value={newMessage}
                         onChange={(e: ChangeEvent<HTMLInputElement>) => setNewMessage(e.target.value)}
-                        // Disable input while sending, loading initial messages, or if user/character isn't loaded
                         disabled={sending || loadingMessages || loadingCharacter || authLoading || !user || !character}
-                        className="flex-grow"
+                        className="flex-grow h-10" // Ensure consistent height
                         autoComplete="off"
                     />
                     <Button type="submit" size="icon" disabled={sending || !newMessage.trim() || loadingMessages || loadingCharacter || authLoading || !user || !character}>
-                        {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                        {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+                        <span className="sr-only">Send message</span>
                     </Button>
                 </form>
             </CardFooter>

@@ -4,8 +4,8 @@ import { ReactNode } from 'react';
 export default function AccountLayout({ children }: { children: ReactNode }) {
   return (
     <ProtectedRoute>
-      <div className="container mx-auto px-4 py-8">
-        {/* Optionally add account-specific navigation/sidebar here */}
+      {/* Use flex-1 to ensure it takes available space if needed */}
+      <div className="container mx-auto px-4 py-8 md:py-12 flex-1">
         {children}
       </div>
     </ProtectedRoute>

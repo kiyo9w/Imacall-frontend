@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
-import { LogIn, LogOut, User, Settings, Bot, History } from 'lucide-react'; // Added History
+import { LogIn, LogOut, User, Settings, Bot, History, Loader2 } from 'lucide-react'; // Added Loader2
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
 
@@ -33,13 +33,13 @@ export function Header() {
   };
 
   return (
-    <header className="bg-card border-b sticky top-0 z-40 shadow-sm">
+    <header className="bg-card border-b sticky top-0 z-40 shadow-sm"> {/* Added shadow-sm */}
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <Link href="/" className="text-2xl font-bold text-primary flex items-center gap-2">
-           <Bot className="h-6 w-6" /> {/* Minimalist Icon */}
+        <Link href="/" className="text-2xl font-bold text-primary flex items-center gap-2 hover:opacity-90 transition-opacity">
+           <Bot className="h-7 w-7" /> {/* Slightly larger icon */}
           Imacall
         </Link>
-        <nav className="flex items-center gap-4">
+        <nav className="flex items-center gap-2 md:gap-4"> {/* Adjusted gap */}
           <Button variant="ghost" asChild>
             <Link href="/characters">Characters</Link>
           </Button>
@@ -48,11 +48,11 @@ export function Header() {
           ) : user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0"> {/* Adjusted padding */}
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
                   <Avatar className="h-9 w-9">
                     {/* Assuming user object doesn't have photoURL yet */}
                     {/* <AvatarImage src={user.photoURL ?? undefined} alt={user.full_name ?? 'User'} /> */}
-                    <AvatarFallback>
+                    <AvatarFallback className="bg-primary/10 text-primary"> {/* Added subtle background */}
                       {user.full_name ? getInitials(user.full_name) : <User size={18} />}
                     </AvatarFallback>
                   </Avatar>
@@ -90,13 +90,12 @@ export function Header() {
                 </DropdownMenuItem>
                  <DropdownMenuItem asChild>
                    <Link href="/account/history">
-                      {/* Use History icon from lucide-react */}
                      <History className="mr-2 h-4 w-4"/>
                      <span>History</span>
                    </Link>
                  </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut} disabled={loading}>
+                <DropdownMenuItem onClick={handleSignOut} disabled={loading} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
                   <span>Log out</span>
                 </DropdownMenuItem>
@@ -114,6 +113,3 @@ export function Header() {
     </header>
   );
 }
-
-// Import Loader2 if logout process has async aspects needing visual feedback
-import { Loader2 } from 'lucide-react';

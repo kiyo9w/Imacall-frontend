@@ -4,93 +4,166 @@
 
 @layer base {
   :root {
-    --background: 0 0% 94%; /* Light Gray #f0f0f0 */
+    --background: 240 6% 96%; /* Slightly darker light gray */
     --foreground: 240 10% 3.9%; /* Dark Gray for text */
+
     --card: 0 0% 100%;
     --card-foreground: 240 10% 3.9%;
+
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
-    --primary: 180 100% 25%; /* Dark Teal #008080 */
+
+    --primary: 180 90% 30%; /* Slightly brighter dark teal */
     --primary-foreground: 0 0% 98%; /* White text on primary */
-    --secondary: 0 0% 96.1%; /* Slightly lighter gray */
+
+    --secondary: 240 5% 93%; /* Slightly adjusted secondary gray */
     --secondary-foreground: 240 5.9% 10%;
-    --muted: 0 0% 90%; /* Muted gray */
+
+    --muted: 240 5% 90%; /* Muted gray - slightly adjusted */
     --muted-foreground: 240 3.8% 46.1%;
-    --accent: 16 100% 66%; /* Coral #FF7F50 */
+
+    --accent: 16 100% 60%; /* Slightly adjusted coral */
     --accent-foreground: 0 0% 9%; /* Dark text on accent */
-    --destructive: 0 84.2% 60.2%;
+
+    --destructive: 0 75% 55%; /* Adjusted destructive red */
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 180 100% 25%; /* Dark Teal for focus rings */
-    --chart-1: 180 76% 31%; /* Teal shade */
-    --chart-2: 16 80% 59%; /* Coral shade */
-    --chart-3: 200 80% 40%; /* Blue shade */
-    --chart-4: 43 74% 66%; /* Yellow shade */
-    --chart-5: 27 87% 67%; /* Orange shade */
-    --radius: 0.5rem;
-    --sidebar-background: 0 0% 98%; /* Keep sidebar light */
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 180 100% 25%; /* Dark Teal */
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 16 100% 90%; /* Lighter Coral for sidebar accents */
-    --sidebar-accent-foreground: 16 100% 30%; /* Darker Coral text */
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 180 100% 25%; /* Dark Teal */
+
+    --border: 240 5% 88%; /* Adjusted border color */
+    --input: 240 5% 90%; /* Adjusted input background */
+    --ring: 180 90% 35%; /* Teal for focus rings - adjusted */
+
+    --radius: 0.75rem; /* Increased border radius */
+
+    /* Chart colors remain, adjust if needed for specific charts */
+    --chart-1: 180 76% 31%;
+    --chart-2: 16 80% 59%;
+    --chart-3: 200 80% 40%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+
+    /* Sidebar theme - adjusted for consistency */
+    --sidebar-background: 0 0% 100%; /* Match card background */
+    --sidebar-foreground: 240 10% 3.9%; /* Match card foreground */
+    --sidebar-border: 240 5% 88%; /* Match border */
+    --sidebar-primary: 180 90% 30%; /* Match primary */
+    --sidebar-primary-foreground: 0 0% 98%; /* Match primary foreground */
+    --sidebar-accent: 180 5% 94%; /* Subtle accent - light teal/gray */
+    --sidebar-accent-foreground: 180 90% 30%; /* Primary color for text */
+    --sidebar-ring: 180 90% 35%; /* Match ring */
   }
+
   .dark {
-    /* Keeping dark theme consistent with defaults for now, can customize later */
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
+    /* Adjusted dark theme for better contrast and consistency */
+    --background: 240 10% 4%; /* Darker background */
+    --foreground: 0 0% 98%; /* Light text */
+
+    --card: 240 5% 9%; /* Slightly lighter card */
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
+
+    --popover: 240 5% 9%; /* Match card */
     --popover-foreground: 0 0% 98%;
-    --primary: 180 100% 35%; /* Slightly lighter Teal for dark mode */
-    --primary-foreground: 0 0% 9%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 16 100% 70%; /* Slightly lighter Coral for dark mode */
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 62.8% 30.6%;
+
+    --primary: 180 80% 45%; /* Brighter teal for dark mode */
+    --primary-foreground: 0 0% 100%; /* White text */
+
+    --secondary: 240 4% 12%; /* Adjusted secondary */
+    --secondary-foreground: 0 0% 90%; /* Lighter secondary text */
+
+    --muted: 240 4% 12%; /* Match secondary */
+    --muted-foreground: 240 4% 55%; /* Adjusted muted text */
+
+    --accent: 16 90% 65%; /* Brighter coral for dark mode */
+    --accent-foreground: 0 0% 9%; /* Dark text on accent */
+
+    --destructive: 0 70% 50%; /* Adjusted destructive red */
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 180 100% 35%;
+
+    --border: 240 4% 15%; /* Adjusted border */
+    --input: 240 4% 12%; /* Adjusted input */
+    --ring: 180 80% 50%; /* Brighter teal ring */
+
+    /* Chart colors for dark mode */
     --chart-1: 180 70% 50%;
     --chart-2: 16 70% 55%;
     --chart-3: 200 70% 50%;
     --chart-4: 43 70% 60%;
     --chart-5: 27 75% 60%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 180 100% 35%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 16 100% 20%; /* Darker Coral accent */
-    --sidebar-accent-foreground: 16 100% 80%; /* Lighter Coral text */
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 180 100% 35%;
+
+    /* Sidebar theme for dark mode */
+    --sidebar-background: 240 5% 9%; /* Match card background */
+    --sidebar-foreground: 0 0% 98%; /* Match card foreground */
+    --sidebar-border: 240 4% 15%; /* Match border */
+    --sidebar-primary: 180 80% 45%; /* Match primary */
+    --sidebar-primary-foreground: 0 0% 100%; /* Match primary foreground */
+    --sidebar-accent: 240 4% 18%; /* Subtle dark accent */
+    --sidebar-accent-foreground: 180 80% 45%; /* Primary color for text */
+    --sidebar-ring: 180 80% 50%; /* Match ring */
   }
 }
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border; /* Use the theme variable for borders */
   }
   body {
     @apply bg-background text-foreground;
-    /* Use the CSS variable provided by geist/font/sans */
-    font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+    /* Use the CSS variable provided by geist/font/sans or Inter */
+    font-family: var(--font-inter), system-ui, sans-serif; /* Fallback fonts */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold tracking-tight;
+    @apply font-semibold tracking-tight text-foreground; /* Ensure heading color uses foreground */
   }
 
-  h1 { @apply text-3xl; }
-  h2 { @apply text-2xl; }
-  h3 { @apply text-xl; }
-  h4 { @apply text-lg; }
+  h1 { @apply text-3xl lg:text-4xl; } /* Responsive heading sizes */
+  h2 { @apply text-2xl lg:text-3xl; }
+  h3 { @apply text-xl lg:text-2xl; }
+  h4 { @apply text-lg lg:text-xl; }
+
+  /* Add subtle transitions to common elements */
+  button, a, input, textarea, select {
+    @apply transition-colors duration-200 ease-in-out;
+  }
+  button, a {
+     @apply transition-transform duration-150 ease-in-out;
+     &:hover:not(:disabled) {
+        /* @apply scale-[1.02]; */ /* Optional subtle scale on hover */
+     }
+     &:active:not(:disabled) {
+       @apply scale-[0.98]; /* Subtle press effect */
+     }
+  }
+}
+
+/* Custom scrollbar styling */
+@layer utilities {
+  /* For Webkit browsers (Chrome, Safari) */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+    border-radius: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted));
+    border-radius: 10px;
+    border: 2px solid hsl(var(--background)); /* Creates padding around thumb */
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
+
+  /* For Firefox */
+  /* Firefox support is limited, can use basic color */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted)) hsl(var(--background));
+  }
 }

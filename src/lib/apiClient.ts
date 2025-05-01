@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Ensure this matches your deployed backend URL.
 // Use the environment variable first, fall back to the Render URL.
-const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://imacall-backend.onrender.com';
+const baseURL = 'https://imacall-backend.onrender.com';
 
 // Check if the backend URL is set correctly
 if (!baseURL) {

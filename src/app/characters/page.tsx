@@ -11,15 +11,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Star, Search, Filter, ArrowUpDown, Bot, Loader2, AlertCircle } from 'lucide-react'; // Removed ArrowDown, ArrowUp
-import { useDebounce } from '@/hooks/use-debounce';
+import { Star, Search, Filter, ArrowUpDown, Bot, Loader2, AlertCircle, ListFilter } from 'lucide-react'; // Added ListFilter
+import { useDebounce } from '@/hooks/use-debounce'; // Corrected import path
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import axios from 'axios'; // For error handling
+import { parseISO } from 'date-fns'; // Import parseISO for date sorting
 
 const CATEGORIES = Object.values(CharacterCategory);
 const CHARS_PER_PAGE = 12;
 
-type SortOption = 'createdAt' | 'popularityScore' | 'averageRating' | 'name'; // Add 'name' if API supports it
+type SortOption = 'updatedAt' | 'popularityScore' | 'averageRating' | 'name'; // API might use 'updatedAt' or similar
 type SortDirection = 'desc' | 'asc';
 
 export default function CharactersPage() {
@@ -29,62 +30,56 @@ export default function CharactersPage() {
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<CharacterCategory | 'All'>('All');
-    // API might not support all sorting options, adjust defaults
-    const [sortBy, setSortBy] = useState<SortOption>('createdAt');
+    // Default sort by latest updated
+    const [sortBy, setSortBy] = useState<SortOption>('updatedAt');
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-    const [currentPage, setCurrentPage] = useState(0); // Use page number for skip calculation
+    const [currentPage, setCurrentPage] = useState(0);
     const [totalCount, setTotalCount] = useState(0);
     const [hasMore, setHasMore] = useState(true);
 
-    const debouncedSearchTerm = useDebounce(searchTerm, 300); // Debounce search input
+    const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
     const fetchCharacters = useCallback(async (loadMore = false) => {
         const pageToFetch = loadMore ? currentPage + 1 : 0;
         if (!loadMore) {
             setLoading(true);
-            setCharacters([]); // Reset characters when filters/sort change
+            setCharacters([]); // Reset characters on new filter/sort
             setCurrentPage(0);
-            setHasMore(true);
+            setHasMore(true); // Assume more might exist on filter change
         } else {
             setLoadingMore(true);
         }
         setError(null);
 
         try {
-             // Prepare query parameters for the API
              const params: Record<string, any> = {
                 skip: pageToFetch * CHARS_PER_PAGE,
                 limit: CHARS_PER_PAGE,
-                // Add other filters/sorting params if the API supports them
-                // status: 'Approved', // API endpoint likely defaults to Approved
+                // Add API-supported filters/sorting if available
                  // category: selectedCategory === 'All' ? undefined : selectedCategory,
                  // search: debouncedSearchTerm || undefined,
-                 // sort_by: sortBy,
-                 // sort_dir: sortDirection,
+                 // sort_by: sortBy, // Adjust based on actual API param names
+                 // sort_dir: sortDirection, // Adjust based on actual API param names
             };
-
-             // Clean undefined params
              Object.keys(params).forEach(key => params[key] === undefined && delete params[key]);
 
-
-             // Call the API endpoint for listing approved characters
             const response = await apiClient.get<PaginatedResponse<CharacterPublic>>(
-                '/characters/', // Endpoint for approved public characters
+                '/characters/', // Public approved characters endpoint
                 { params }
             );
 
             const fetchedCharacters = response.data.data;
-             const fetchedCount = response.data.count; // Assuming API returns total count
+            const fetchedCount = response.data.count;
 
-            // --- Client-side filtering/sorting if API doesn't support it ---
+             // --- Client-side filtering/sorting (fallback if API lacks support) ---
              let processedCharacters = fetchedCharacters;
 
-             // Client-side category filtering (if API doesn't support it)
+             // Client-side category filtering
              if (selectedCategory !== 'All' /* && !params.category */) {
                  processedCharacters = processedCharacters.filter(char => char.category === selectedCategory);
              }
 
-             // Client-side search (if API doesn't support it)
+             // Client-side search (name and tags)
              if (debouncedSearchTerm /* && !params.search */) {
                 processedCharacters = processedCharacters.filter(char =>
                     char.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
@@ -92,25 +87,22 @@ export default function CharactersPage() {
                 );
              }
 
-             // Client-side sorting (if API doesn't support it)
+             // Client-side sorting
              if (true /* !params.sort_by */) {
                  processedCharacters.sort((a, b) => {
                      let compareA: any = 0;
                      let compareB: any = 0;
 
                      switch (sortBy) {
-                         case 'createdAt':
-                         case 'updatedAt': // Assuming we sort by update time if createdAt isn't primary
-                             compareA = a.updatedAt ? parseISO(a.updatedAt).getTime() : 0;
-                             compareB = b.updatedAt ? parseISO(b.updatedAt).getTime() : 0;
+                         case 'updatedAt': // Assuming API provides updatedAt or createdAt
+                             compareA = a.updatedAt ? parseISO(a.updatedAt).getTime() : (a.createdAt ? parseISO(a.createdAt).getTime() : 0);
+                             compareB = b.updatedAt ? parseISO(b.updatedAt).getTime() : (b.createdAt ? parseISO(b.createdAt).getTime() : 0);
                              break;
                          case 'averageRating':
                              compareA = a.averageRating ?? 0;
                              compareB = b.averageRating ?? 0;
                              break;
-                         case 'popularityScore':
-                             // compareA = a.popularityScore ?? 0; // Add if field exists
-                             // compareB = b.popularityScore ?? 0;
+                         case 'popularityScore': // Needs field from API
                               compareA = 0; // Placeholder
                               compareB = 0;
                              break;
@@ -129,9 +121,9 @@ export default function CharactersPage() {
 
 
             setCharacters(prev => loadMore ? [...prev, ...processedCharacters] : processedCharacters);
-            setTotalCount(fetchedCount); // Update total count from API
+            // Update total count based on API response or filtered length if client-side filtering is heavy
+            setTotalCount(fetchedCount); // Use API count ideally
             setCurrentPage(pageToFetch);
-            // Determine hasMore based on total count and current items
             setHasMore((pageToFetch + 1) * CHARS_PER_PAGE < fetchedCount);
 
         } catch (err) {
@@ -144,14 +136,12 @@ export default function CharactersPage() {
              setLoading(false);
              setLoadingMore(false);
         }
-         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentPage, selectedCategory, sortBy, sortDirection, debouncedSearchTerm]); // Dependencies
 
 
-    // Fetch characters initially and whenever filters/sort/search change
     useEffect(() => {
-        fetchCharacters(false); // Fetch first page
-    }, [fetchCharacters]); // Use fetchCharacters callback
+        fetchCharacters(false); // Initial fetch or fetch when filters change
+    }, [fetchCharacters]); // Relies on the memoized callback
 
 
     const handleSortChange = (newSortBy: SortOption) => {
@@ -161,17 +151,14 @@ export default function CharactersPage() {
             setSortBy(newSortBy);
             setSortDirection('desc'); // Default to descending for new field
         }
-         // Reset pagination when sort changes
-        setCurrentPage(0);
-        setCharacters([]);
         // Fetching will be triggered by useEffect dependency change
     };
 
-    const renderSkeleton = () => (
-        Array.from({ length: CHARS_PER_PAGE }).map((_, index) => (
-            <Card key={index} className="overflow-hidden animate-pulse">
+    const renderSkeleton = (count = CHARS_PER_PAGE) => (
+        Array.from({ length: count }).map((_, index) => (
+            <Card key={index} className="overflow-hidden border-transparent shadow-none animate-pulse">
                 <CardHeader className="p-0">
-                    <Skeleton className="aspect-[3/2] w-full bg-muted" /> {/* Adjusted aspect ratio */}
+                    <Skeleton className="aspect-[3/2] w-full bg-muted rounded-t-lg" />
                 </CardHeader>
                 <CardContent className="p-4 space-y-2">
                     <Skeleton className="h-5 w-3/4 bg-muted" />
@@ -180,7 +167,7 @@ export default function CharactersPage() {
                 </CardContent>
                 <CardFooter className="p-4 flex justify-between items-center">
                     <Skeleton className="h-6 w-16 bg-muted rounded-full" />
-                    <Skeleton className="h-8 w-20 bg-muted" />
+                    <Skeleton className="h-9 w-24 bg-muted rounded-md" />
                 </CardFooter>
             </Card>
         ))
@@ -188,36 +175,24 @@ export default function CharactersPage() {
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <h1 className="text-3xl font-bold mb-6">Discover Characters</h1>
+            <h1 className="text-3xl md:text-4xl font-bold mb-8 text-center">Discover Characters</h1>
 
-            {/* Filters and Search */}
-            <div className="mb-8 p-4 border rounded-lg bg-card shadow-sm flex flex-col md:flex-row gap-4 items-center">
+            {/* Filters and Search Bar */}
+            <div className="mb-8 p-4 border rounded-lg bg-card shadow sticky top-16 z-30 flex flex-col md:flex-row gap-4 items-center">
                 <div className="relative flex-grow w-full md:w-auto">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                         type="search"
-                        placeholder="Search by name or tag..." // Search might be client-side
+                        placeholder="Search name or tag..."
                         value={searchTerm}
-                        onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                             setSearchTerm(e.target.value);
-                             // Reset pagination on search change
-                            setCurrentPage(0);
-                            setCharacters([]);
-                            // Fetch triggered by useEffect on debouncedSearchTerm
-                        }}
+                        onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                         className="pl-10 w-full"
                     />
                 </div>
-                <div className="flex gap-4 w-full md:w-auto flex-wrap"> {/* Added flex-wrap */}
-                     <Select value={selectedCategory} onValueChange={(value) => {
-                          setSelectedCategory(value as CharacterCategory | 'All');
-                           // Reset pagination on filter change
-                           setCurrentPage(0);
-                           setCharacters([]);
-                            // Fetch triggered by useEffect
-                      }}>
-                        <SelectTrigger className="w-full sm:w-[180px]"> {/* Responsive width */}
-                             <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
+                <div className="flex gap-3 w-full md:w-auto flex-wrap justify-center">
+                     <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as CharacterCategory | 'All')}>
+                        <SelectTrigger className="w-full sm:w-[160px]">
+                             <ListFilter className="h-4 w-4 mr-2 text-muted-foreground" />
                             <SelectValue placeholder="Category" />
                         </SelectTrigger>
                         <SelectContent>
@@ -230,75 +205,84 @@ export default function CharactersPage() {
 
                     <Select value={`${sortBy}-${sortDirection}`} onValueChange={(value) => {
                         const [newSort, newDir] = value.split('-') as [SortOption, SortDirection];
-                        handleSortChange(newSort); // Uses handleSortChange to manage direction toggle
+                        handleSortChange(newSort);
                     }}>
-                         <SelectTrigger className="w-full sm:w-[200px]"> {/* Responsive width */}
+                         <SelectTrigger className="w-full sm:w-[180px]">
                              <ArrowUpDown className="h-4 w-4 mr-2 text-muted-foreground" />
                             <SelectValue placeholder="Sort By" />
                         </SelectTrigger>
                         <SelectContent>
-                            {/* Adjust available sort options based on API/client capabilities */}
-                            <SelectItem value="createdAt-desc">Newest First</SelectItem>
-                            <SelectItem value="createdAt-asc">Oldest First</SelectItem>
+                            {/* Adjust sort options based on API/client capabilities */}
+                            <SelectItem value="updatedAt-desc">Recently Updated</SelectItem>
+                            <SelectItem value="updatedAt-asc">Oldest</SelectItem>
                              <SelectItem value="name-asc">Name (A-Z)</SelectItem>
                              <SelectItem value="name-desc">Name (Z-A)</SelectItem>
+                             <SelectItem value="averageRating-desc">Highest Rated</SelectItem>
                             {/* <SelectItem value="popularityScore-desc">Most Popular</SelectItem> */}
-                            <SelectItem value="averageRating-desc">Highest Rated</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
             </div>
 
             {error && (
-                 <Alert variant="destructive" className="mb-6">
+                 <Alert variant="destructive" className="mb-6 max-w-3xl mx-auto">
                     <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Error</AlertTitle>
+                    <AlertTitle>Error Loading Characters</AlertTitle>
                     <AlertDescription>{error}</AlertDescription>
                 </Alert>
             )}
 
             {/* Character Grid */}
-            {loading && characters.length === 0 ? ( // Show skeleton only on initial load
+            {loading && characters.length === 0 ? (
                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {renderSkeleton()}
                  </div>
-            ) : !loading && characters.length === 0 ? ( // Show no results message
+            ) : !loading && characters.length === 0 ? (
                 <div className="text-center py-16 text-muted-foreground">
-                    <Bot className="h-12 w-12 mx-auto mb-4" />
-                    <p className="text-lg">No characters found matching your criteria.</p>
+                    <Bot className="h-12 w-12 mx-auto mb-4 text-primary/50" />
+                    <p className="text-lg font-medium">No Characters Found</p>
                     <p>Try adjusting your search or filters.</p>
                 </div>
             ) : (
                 <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {characters.map((char) => (
-                            <Card key={char.id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-200 flex flex-col">
+                            <Card key={char.id} className="overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 ease-in-out flex flex-col group transform hover:-translate-y-1 border border-transparent hover:border-primary/20">
                                 <CardHeader className="p-0 relative">
-                                    <Link href={`/character/${char.id}`} className="block aspect-[3/2] relative bg-muted">
+                                    <Link href={`/character/${char.id}`} className="block aspect-[3/2] relative bg-muted overflow-hidden rounded-t-lg">
                                         <Image
                                              data-ai-hint={`${char.category || ''} character ${char.tags?.join(' ') || ''}`}
-                                             // Use image_url from API
-                                            src={char.image_url || `https://picsum.photos/seed/${char.id}/300/200`}
+                                            src={char.image_url || `https://picsum.photos/seed/${char.id}/400/267`} // Adjusted size for 3:2
                                             alt={char.name}
                                             fill
                                             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
                                             style={{ objectFit: 'cover' }}
-                                            className="bg-muted"
+                                            className="transition-transform duration-300 ease-in-out group-hover:scale-105" // Zoom effect
                                         />
+                                         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                                     </Link>
                                      {char.averageRating && char.averageRating > 0 && (
-                                         <Badge variant="secondary" className="absolute top-2 right-2 flex items-center gap-1 py-1 px-2">
+                                         <Badge variant="secondary" className="absolute top-2 right-2 flex items-center gap-1 py-1 px-2 bg-background/80 backdrop-blur-sm">
                                              <Star className="h-3 w-3 text-yellow-500 fill-yellow-400" />
                                              <span className="text-xs font-semibold">{char.averageRating.toFixed(1)}</span>
                                          </Badge>
                                      )}
                                 </CardHeader>
                                 <CardContent className="p-4 flex-grow">
-                                    <CardTitle className="text-lg mb-1 truncate">{char.name}</CardTitle>
+                                    <CardTitle className="text-lg mb-1 truncate group-hover:text-primary transition-colors">
+                                       <Link href={`/character/${char.id}`} className="hover:underline">
+                                         {char.name}
+                                       </Link>
+                                    </CardTitle>
                                     <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{char.description || 'No description available.'}</p>
-                                    {char.category && <Badge variant="outline">{char.category}</Badge>}
+                                    <div className="flex flex-wrap gap-1 mt-auto">
+                                        {char.category && <Badge variant="outline" className="text-xs">{char.category}</Badge>}
+                                         {char.tags?.slice(0, 2).map(tag => ( // Show limited tags
+                                             <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
+                                         ))}
+                                    </div>
                                 </CardContent>
-                                <CardFooter className="p-4 border-t">
+                                <CardFooter className="p-4 border-t bg-card">
                                     <Button asChild size="sm" className="w-full">
                                         <Link href={`/character/${char.id}/chat`}>Chat Now</Link>
                                     </Button>
@@ -306,34 +290,26 @@ export default function CharactersPage() {
                             </Card>
                         ))}
                          {/* Skeleton placeholders while loading more */}
-                         {loadingMore && renderSkeleton()}
+                         {loadingMore && renderSkeleton(4)} {/* Show fewer skeletons for load more */}
                     </div>
 
-                     {/* Load More Button */}
-                     {hasMore && !loadingMore && (
-                        <div className="mt-8 text-center">
-                            <Button
-                                onClick={() => fetchCharacters(true)} // Pass true to load more
-                                disabled={loadingMore}
+                     {/* Load More Button / Indicator */}
+                     <div className="mt-10 text-center">
+                         {loadingMore ? (
+                             <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+                         ) : hasMore ? (
+                             <Button
+                                onClick={() => fetchCharacters(true)}
                                 variant="outline"
                             >
-                                Load More
+                                Load More Characters
                             </Button>
-                        </div>
-                    )}
-                     {loadingMore && ( // Show loader while loading more
-                        <div className="mt-8 text-center">
-                            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-                        </div>
-                     )}
-                     {!hasMore && characters.length > 0 && ( // Indicate end of list
-                         <p className="text-center text-muted-foreground mt-8">You've reached the end!</p>
-                     )}
+                        ) : (
+                           characters.length > 0 && <p className="text-muted-foreground">You've reached the end!</p>
+                        )}
+                     </div>
                 </>
             )}
         </div>
     );
 }
-
-// Import parseISO for date sorting
-import { parseISO } from 'date-fns';

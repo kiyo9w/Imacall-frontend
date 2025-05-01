@@ -36,22 +36,22 @@ export default function LoginPage() {
       router.push(redirectPath); // Use the redirect path
     } catch (err: any) {
       console.error('Login Error:', err);
+      // Use the error message thrown from AuthContext
       setError(err.message || 'Login failed. Please check your credentials.');
     }
   };
 
-   // Google Sign-In is removed as it's not directly supported by the basic FastAPI setup
-
   return (
-    <div className="flex justify-center items-center py-12">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Login to Imacall</CardTitle>
-          <CardDescription>Access your account.</CardDescription>
+    // Use flex to center content vertically and horizontally within the main content area
+    <div className="flex flex-1 items-center justify-center py-12 px-4">
+      <Card className="w-full max-w-md shadow-xl transition-shadow hover:shadow-2xl"> {/* Increased shadow */}
+        <CardHeader className="text-center space-y-1"> {/* Added space-y-1 */}
+          <CardTitle className="text-2xl font-bold">Login to Imacall</CardTitle>
+          <CardDescription>Access your account or create a new one.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4"> {/* Added space-y-4 */}
           {error && (
-            <Alert variant="destructive" className="mb-4">
+            <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Login Failed</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
@@ -69,39 +69,39 @@ export default function LoginPage() {
                 disabled={loading}
                 autoComplete="email"
               />
-              {/* Basic validation done by type="email" and required */}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between">
+                 <Label htmlFor="password">Password</Label>
+                 <Link href="/forgot-password" className="text-sm text-primary hover:underline">
+                    Forgot Password?
+                 </Link>
+              </div>
               <Input
                 id="password"
                 name="password" // Add name attribute for FormData
                 type="password"
                 placeholder="••••••••"
                 required
-                minLength={6} // Basic length check
+                minLength={8} // Match API schema min length
                 disabled={loading}
                 autoComplete="current-password"
               />
-               {/* Basic validation done by type="password", required and minLength */}
             </div>
-            <div className="text-sm text-right">
-              <Link href="/forgot-password" className="text-primary hover:underline">
-                Forgot Password?
-              </Link>
-            </div>
+
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
               {loading ? 'Logging in...' : 'Login'}
             </Button>
           </form>
-          {/* Remove Google Sign-In button */}
         </CardContent>
-        <CardFooter className="flex justify-center text-sm">
-          Don't have an account?&nbsp;
-          <Link href="/register" className="text-primary hover:underline flex items-center">
-            <UserPlus className="mr-1 h-4 w-4" /> Register
-          </Link>
+        <CardFooter className="flex flex-col gap-2 text-center text-sm"> {/* Changed flex direction */}
+           <span>Don't have an account?</span>
+          <Button variant="outline" asChild className="w-full">
+             <Link href="/register">
+                <UserPlus className="mr-2 h-4 w-4" /> Register Now
+             </Link>
+          </Button>
         </CardFooter>
       </Card>
     </div>

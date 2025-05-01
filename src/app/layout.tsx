@@ -4,6 +4,8 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { Header } from '@/components/layout/Header';
 import { AuthProvider } from '@/contexts/AuthContext';
+// FirebaseProvider is no longer used
+// import { FirebaseProvider } from '@/contexts/FirebaseContext'; // Import FirebaseProvider
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' }); // Configure Inter font
 
@@ -18,15 +20,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
+    // suppressHydrationWarning is often needed when using themes/dark mode
     <html lang="en" className={inter.variable} suppressHydrationWarning>
-      <body className={`antialiased font-sans flex flex-col min-h-screen`}> {/* Use font-sans */}
-          <AuthProvider> {/* Wrap with AuthProvider */}
-            <Header />
-            <main className="flex-grow container mx-auto px-4 py-8">
-              {children}
-            </main>
-            <Toaster />
-          </AuthProvider>
+      <body className={`font-sans flex flex-col min-h-screen antialiased`}> {/* Simplified classes */}
+        {/* Remove FirebaseProvider wrapper */}
+        <AuthProvider> {/* Wrap with AuthProvider */}
+          <Header />
+          {/* flex-1 ensures main content pushes footer down */}
+          <main className="flex-grow flex flex-col container mx-auto px-4 py-8">
+            {children}
+          </main>
+          {/* Optional: Add a simple footer */}
+          <footer className="py-4 text-center text-xs text-muted-foreground border-t bg-card">
+            © {new Date().getFullYear()} Imacall. All rights reserved.
+          </footer>
+          <Toaster />
+        </AuthProvider>
       </body>
     </html>
   );

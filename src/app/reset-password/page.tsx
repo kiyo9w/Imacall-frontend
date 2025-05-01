@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Save, AlertCircle, CheckCircle, LogIn, Loader2 } from 'lucide-react';
+import { Save, AlertCircle, CheckCircle, LogIn, Loader2, ShieldAlert } from 'lucide-react'; // Added ShieldAlert
 import axios from 'axios';
 
 const resetPasswordSchema = z.object({
@@ -30,6 +30,7 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isTokenValid, setIsTokenValid] = useState<boolean | null>(null); // Check token validity display
   const router = useRouter();
   const searchParams = useSearchParams();
   const tokenFromUrl = searchParams.get('token');
@@ -45,15 +46,13 @@ export default function ResetPasswordPage() {
    useEffect(() => {
      if (tokenFromUrl) {
        setValue('token', tokenFromUrl);
+       setIsTokenValid(true); // Assume valid initially if present
+       setError(null); // Clear potential initial error
+     } else {
+        setIsTokenValid(false);
+        setError("Invalid or missing password reset token in URL.");
      }
    }, [tokenFromUrl, setValue]);
-
-   // Check if token exists on mount
-   useEffect(() => {
-       if (!tokenFromUrl) {
-           setError("Invalid or missing password reset token.");
-       }
-   }, [tokenFromUrl]);
 
   const onSubmit: SubmitHandler<ResetPasswordInputs> = async (data) => {
     setError(null);
@@ -84,38 +83,43 @@ export default function ResetPasswordPage() {
            } else if (err.response.data?.detail?.includes("User not found")) {
                 errorMessage = "User associated with this token not found.";
            }
+       } else if (axios.isAxiosError(err) && err.response?.status === 422) {
+          errorMessage = err.response.data?.detail?.[0]?.msg || "Validation failed (e.g., password too short).";
        }
       setError(errorMessage);
+      setIsTokenValid(false); // Mark token as invalid on error
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex justify-center items-center py-12">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Reset Your Password</CardTitle>
-          <CardDescription>Enter your new password below.</CardDescription>
+    <div className="flex flex-1 items-center justify-center py-12 px-4">
+      <Card className="w-full max-w-md shadow-xl transition-shadow hover:shadow-2xl"> {/* Increased shadow */}
+        <CardHeader className="text-center space-y-1"> {/* Added space-y-1 */}
+          <CardTitle className="text-2xl font-bold">Reset Your Password</CardTitle>
+          <CardDescription>
+             {isTokenValid === false ? "Cannot reset password." : (success ? "Password successfully reset!" : "Enter your new password below.")}
+          </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4"> {/* Added space-y-4 */}
           {error && (
-            <Alert variant="destructive" className="mb-4">
+            <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Error</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
            {success && (
-            <Alert variant="default" className="mb-4 border-green-500 text-green-700 dark:border-green-600 dark:text-green-300">
+            <Alert variant="default" className="border-green-500 text-green-700 dark:border-green-600 dark:text-green-300">
               <CheckCircle className="h-4 w-4 text-green-500" />
               <AlertTitle>Success</AlertTitle>
               <AlertDescription>{success}</AlertDescription>
             </Alert>
           )}
-          {/* Hide form if token is missing or after success */}
-          {!tokenFromUrl && !error && <p className="text-muted-foreground text-center">Loading token...</p>}
-          {tokenFromUrl && !success && (
+
+          {/* Show form only if token seems initially valid and not yet successful */}
+          {isTokenValid && !success && (
              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                {/* Hidden token field */}
                <input type="hidden" {...register('token')} />
@@ -129,6 +133,7 @@ export default function ResetPasswordPage() {
                     {...register('new_password')}
                     className={errors.new_password ? 'border-destructive' : ''}
                     disabled={loading || !!success}
+                    autoComplete="new-password"
                   />
                   {errors.new_password && <p className="text-sm text-destructive">{errors.new_password.message}</p>}
                 </div>
@@ -142,35 +147,43 @@ export default function ResetPasswordPage() {
                         {...register('confirmPassword')}
                         className={errors.confirmPassword ? 'border-destructive' : ''}
                         disabled={loading || !!success}
+                        autoComplete="new-password"
                     />
                     {errors.confirmPassword && <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>}
                 </div>
 
                 <Button type="submit" className="w-full" disabled={loading || !!success || !tokenFromUrl}>
                   {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                  {loading ? 'Resetting...' : 'Reset Password'}
+                  {loading ? 'Resetting...' : 'Set New Password'}
                 </Button>
               </form>
           )}
+
+           {/* Message if token was invalid from the start */}
+           {isTokenValid === false && !error && (
+             <Alert variant="destructive">
+               <ShieldAlert className="h-4 w-4"/>
+               <AlertTitle>Invalid Link</AlertTitle>
+               <AlertDescription>The password reset link is invalid or missing. Please request a new one.</AlertDescription>
+             </Alert>
+           )}
+
         </CardContent>
-         {success && (
-            <CardFooter className="flex justify-center">
-                 <Button asChild>
+         <CardFooter className="flex justify-center">
+             {success ? (
+                 <Button asChild variant="outline">
                      <Link href="/login">
                          <LogIn className="mr-2 h-4 w-4" /> Go to Login
                      </Link>
                  </Button>
-            </CardFooter>
-         )}
-          {!success && !tokenFromUrl && error && (
-            <CardFooter className="flex justify-center">
+             ) : isTokenValid === false || (error && error.includes("token")) ? (
                  <Button variant="outline" asChild>
                      <Link href="/forgot-password">
-                         Request New Link
+                         Request New Reset Link
                      </Link>
                  </Button>
-            </CardFooter>
-          )}
+             ) : null}
+         </CardFooter>
       </Card>
     </div>
   );
