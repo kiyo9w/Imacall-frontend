@@ -1,11 +1,13 @@
 import axios from 'axios';
 
 // Ensure this matches your deployed backend URL.
+// Use the environment variable first, fall back to the Render URL.
 const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://imacall-backend.onrender.com';
 
 // Check if the backend URL is set correctly
 if (!baseURL) {
-  console.error("Error: NEXT_PUBLIC_API_BASE_URL is not defined. Please set it in your .env.local file or ensure the default 'https://imacall-backend.onrender.com' is correct.");
+  // This should ideally not happen with a default value set.
+  console.error("Error: API Base URL is not defined. Please set NEXT_PUBLIC_API_BASE_URL or check the default in apiClient.ts.");
 } else {
   // Log the final base URL being used
   console.log("API Client Initialized. Base URL:", `${baseURL}/api/v1`);
@@ -26,7 +28,7 @@ to explicitly allow requests from your frontend's domain (origin).
 **Steps to Fix:**
 
 1.  **Identify Frontend Origin:**
-    - During **development**, this is usually `http://localhost:xxxx` (e.g., `http://localhost:9002`). Check your browser's address bar.
+    - During **development**, this is usually `http://localhost:xxxx` (e.g., `http://localhost:9002`) or a cloud-based dev URL (e.g., `https://....cloudshell.dev`). Check your browser's address bar.
     - For your **deployed** frontend, this is its public URL (e.g., `https://your-imacall-app.vercel.app`).
 
 2.  **Configure Backend CORS:**
@@ -38,19 +40,22 @@ to explicitly allow requests from your frontend's domain (origin).
     # --------------------------------------------------
     from fastapi import FastAPI
     from fastapi.middleware.cors import CORSMiddleware
+    import os # Import os to read environment variables
 
     app = FastAPI()
 
     # Define allowed origins - VERY IMPORTANT!
-    origins = [
-        "http://localhost:9002",  # Allow frontend dev server (UPDATE PORT IF NEEDED)
-        "https://your-deployed-frontend-url.com", # !!! REPLACE WITH YOUR DEPLOYED FRONTEND URL !!!
-        # Add any other origins if necessary (e.g., preview deployment URLs)
-    ]
+    # Read origins from an environment variable, fallback to a default list for local dev
+    # Example: BACKEND_CORS_ORIGINS="http://localhost:9002,https://your-deployed-frontend.com"
+    cors_origins = os.getenv("BACKEND_CORS_ORIGINS", "http://localhost:9002").split(",")
+    # Add any other always-allowed origins if necessary
+    # cors_origins.append("https://another-allowed-origin.com")
+
+    print(f"Configuring CORS for origins: {cors_origins}") # Log the origins being used
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=origins,          # *** Add your frontend origin(s) here! ***
+        allow_origins=[origin.strip() for origin in cors_origins if origin.strip()], # *** Use the origins list ***
         allow_credentials=True,         # Allow cookies (important for auth headers)
         allow_methods=["*"],            # Allow standard HTTP methods (GET, POST, PUT, DELETE, etc.)
         allow_headers=["*"],            # Allow all headers (including 'Authorization' and 'Content-Type')
@@ -60,9 +65,10 @@ to explicitly allow requests from your frontend's domain (origin).
     # --------------------------------------------------
     ```
 
-3.  **Redeploy Backend:** After updating the CORS middleware in your backend code, you **MUST** redeploy your backend server for the changes to take effect.
+3.  **Set Backend Environment Variable:** Ensure the `BACKEND_CORS_ORIGINS` environment variable is set correctly in your backend hosting environment (e.g., Render, Cloud Run). It should be a comma-separated string of allowed URLs.
+4.  **Redeploy Backend:** After updating the CORS middleware or environment variables in your backend, you **MUST** redeploy your backend server for the changes to take effect.
 
-4.  **Verify in Browser:**
+5.  **Verify in Browser:**
     - Open your browser's developer tools (F12).
     - Go to the "Network" tab.
     - Attempt the action that caused the error (e.g., login).
@@ -73,10 +79,11 @@ to explicitly allow requests from your frontend's domain (origin).
 **Common Mistakes:**
 *   Using `allow_origins=["*"]`: While this might seem like a quick fix, it's insecure for production and might not work correctly with credentials. **Always list specific origins.**
 *   Forgetting to redeploy the backend after changing CORS settings.
-*   Typos in the origin URLs in the `origins` list.
+*   Typos in the origin URLs in the `BACKEND_CORS_ORIGINS` environment variable or the `origins` list in the code.
 *   Not including `http://` or `https://`.
+*   Frontend URL in the browser doesn't exactly match one of the URLs listed in the backend's `allow_origins`.
 
-**Frontend Code (`apiClient.ts`) is likely correct. The issue is backend CORS configuration.**
+**Frontend Code (`apiClient.ts`) is likely correct if the `baseURL` points to the right server. The issue is almost always backend CORS configuration.**
 ==================================================
 */
 
@@ -106,7 +113,7 @@ apiClient.interceptors.request.use(
     }
 
     // Log request details for debugging (uncomment if needed)
-    // console.log(`Making API Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
+    // console.log(`API Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
     // console.log("Headers:", config.headers);
     // console.log("Data:", config.data);
 
@@ -144,6 +151,7 @@ apiClient.interceptors.response.use(
         );
     } else if (error.response) {
         // Log backend error details if available
+        console.error("Backend Error Response Status:", error.response.status);
         console.error("Backend Error Response Data:", error.response.data);
     }
 
