@@ -12,7 +12,7 @@ if (!baseURL) {
 const apiClient = axios.create({
   baseURL: `${baseURL}/api/v1`,
   headers: {
-    'Content-Type': 'application/json',
+    'Content-Type': 'application/json', // Default Content-Type
   },
 });
 
@@ -26,6 +26,8 @@ apiClient.interceptors.request.use(
         config.headers['Authorization'] = `Bearer ${token}`;
       }
     }
+    // Removed Content-Type modification from interceptor.
+    // Specific request calls (like login) should set their required Content-Type.
     return config;
   },
   (error) => {
