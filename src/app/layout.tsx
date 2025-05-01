@@ -19,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={inter.variable}> {/* Apply font variable to html tag */}
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body className={`antialiased font-sans flex flex-col min-h-screen`}> {/* Use font-sans */}
         <FirebaseProvider> {/* Wrap with FirebaseProvider */}
           <AuthProvider> {/* Wrap with AuthProvider */}
