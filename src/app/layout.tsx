@@ -20,7 +20,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={inter.variable}> {/* Apply font variable to html tag */}
-      {/* Removed whitespace here */}
       <body className={`antialiased font-sans flex flex-col min-h-screen`}> {/* Use font-sans */}
         <FirebaseProvider> {/* Wrap with FirebaseProvider */}
           <AuthProvider> {/* Wrap with AuthProvider */}
