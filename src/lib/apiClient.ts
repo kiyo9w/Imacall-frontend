@@ -89,7 +89,8 @@ to explicitly allow requests from your frontend's domain (origin).
 
 
 const apiClient = axios.create({
-  baseURL: `${baseURL}/api/v1`,
+  // Remove trailing slash from baseURL if present before adding /api/v1
+  baseURL: `${baseURL.replace(/\/$/, "")}/api/v1`,
   // Note: Default Content-Type is set dynamically in the request interceptor below
   // to handle application/json vs form-urlencoded correctly.
 });
