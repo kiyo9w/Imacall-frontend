@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, FormEvent, ChangeEvent, useCallback } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation'; // Import usePathname
 import Link from 'next/link';
 import Image from 'next/image';
 import apiClient from '@/lib/apiClient';
@@ -17,13 +17,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, Send, ArrowLeft, Bot, User as UserIcon, AlertCircle, MessageSquare, Phone } from 'lucide-react'; // Added Phone
+import { Loader2, Send, ArrowLeft, Bot, User as UserIcon, AlertCircle, MessageSquare, Phone } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { format, parseISO, isToday, isYesterday } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import axios from 'axios';
-import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
+import { Skeleton } from '@/components/ui/skeleton';
 
 const MESSAGES_PER_LOAD = 30; // Load more messages at once
 
@@ -542,3 +542,4 @@ const getInitials = (name?: string | null): string => {
      }
      return '?';
 };
+
