@@ -17,7 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, Send, ArrowLeft, Bot, User as UserIcon, AlertCircle, MessageSquare } from 'lucide-react';
+import { Loader2, Send, ArrowLeft, Bot, User as UserIcon, AlertCircle, MessageSquare, Phone } from 'lucide-react'; // Added Phone
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { format, parseISO, isToday, isYesterday } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
@@ -29,14 +29,19 @@ const MESSAGES_PER_LOAD = 30; // Load more messages at once
 
 // Helper to format timestamp for display
 const formatTimestamp = (isoString: string) => {
-    const date = parseISO(isoString);
-    if (isToday(date)) {
-        return format(date, 'p'); // e.g., 2:30 PM
+    try {
+        const date = parseISO(isoString);
+        if (isToday(date)) {
+            return format(date, 'p'); // e.g., 2:30 PM
+        }
+        if (isYesterday(date)) {
+            return `Yesterday ${format(date, 'p')}`; // e.g., Yesterday 10:15 AM
+        }
+        return format(date, 'MMM d, p'); // e.g., May 1, 2:30 PM
+    } catch (e) {
+        console.warn("Invalid date string for formatting:", isoString);
+        return "Invalid Date";
     }
-    if (isYesterday(date)) {
-        return `Yesterday ${format(date, 'p')}`; // e.g., Yesterday 10:15 AM
-    }
-    return format(date, 'MMM d, p'); // e.g., May 1, 2:30 PM
 };
 
 
@@ -63,6 +68,7 @@ export default function ChatPage() {
     const [hasMoreMessages, setHasMoreMessages] = useState(true);
     const [totalMessages, setTotalMessages] = useState(0);
     const [isAtBottom, setIsAtBottom] = useState(true); // Track scroll position
+    const pathname = usePathname(); // Get pathname for redirect
 
 
     // 1. Fetch Character Details
@@ -132,6 +138,9 @@ export default function ChatPage() {
                  setConversationId(null); // Reset conversation ID if not found
             } else if (axios.isAxiosError(err) && err.response?.status === 401) {
                  setError("Authentication required to view messages.");
+            } else if (axios.isAxiosError(err) && err.response?.status === 403) {
+                 setError("You do not have permission to view this conversation.");
+                 setConversationId(null);
             }
         } finally {
             setLoadingMessages(false);
@@ -289,6 +298,8 @@ export default function ChatPage() {
                  errorMsg = "You don't have permission for this conversation.";
              } else if (axios.isAxiosError(err) && err.response?.status === 422) {
                   errorMsg = "Message content invalid or too long.";
+             } else if (axios.isAxiosError(err) && err.response?.status === 500) {
+                 errorMsg = "An error occurred on the server while generating the response.";
              }
             setError(errorMsg); // Display error to user potentially
             toast({ title: "Send Error", description: errorMsg, variant: "destructive" });
@@ -308,9 +319,9 @@ export default function ChatPage() {
              {Array.from({ length: count }).map((_, i) => (
                 <div key={i} className={cn("flex items-end gap-2", i % 2 === 0 ? 'justify-start' : 'justify-end')}>
                     {i % 2 === 0 && <Skeleton className="h-8 w-8 rounded-full bg-muted" />}
-                    <div className={cn("max-w-[70%] rounded-lg p-3 space-y-1", i % 2 === 0 ? 'bg-card' : 'bg-primary/10')}>
-                        <Skeleton className="h-3 w-32 bg-muted" />
-                         <Skeleton className="h-3 w-24 bg-muted" />
+                    <div className={cn("max-w-[70%] rounded-xl p-3 space-y-1.5 shadow-sm", i % 2 === 0 ? 'bg-card' : 'bg-primary text-primary-foreground')}>
+                        <Skeleton className={cn("h-3 w-32", i % 2 === 0 ? 'bg-muted' : 'bg-primary-foreground/30')} />
+                         <Skeleton className={cn("h-3 w-24", i % 2 === 0 ? 'bg-muted' : 'bg-primary-foreground/30')} />
                     </div>
                     {i % 2 !== 0 && <Skeleton className="h-8 w-8 rounded-full bg-muted" />}
                 </div>
@@ -323,21 +334,23 @@ export default function ChatPage() {
         return (
             <div className="flex flex-col h-[calc(100vh-4rem)]">
                  {/* Skeleton Header */}
-                 <CardHeader className="flex flex-row items-center gap-4 p-3 border-b bg-card sticky top-16 z-10">
+                 <CardHeader className="flex flex-row items-center gap-4 p-3 border-b bg-card/95 backdrop-blur-sm sticky top-16 z-10 shadow-sm">
                      <Skeleton className="h-9 w-9 rounded-md bg-muted" />
                      <Skeleton className="h-10 w-10 rounded-full bg-muted" />
                      <div className="flex-grow space-y-1">
                          <Skeleton className="h-5 w-32 bg-muted" />
+                         <Skeleton className="h-3 w-20 bg-muted" />
                      </div>
+                     <Skeleton className="h-9 w-9 rounded-md bg-muted" />
                  </CardHeader>
-                 <div className="flex-grow flex items-center justify-center">
+                 <div className="flex-grow flex items-center justify-center bg-background/80 backdrop-blur-sm">
                     <Loader2 className="h-12 w-12 animate-spin text-primary" />
                  </div>
                  {/* Skeleton Footer */}
-                 <CardFooter className="p-4 border-t bg-card sticky bottom-0">
+                 <CardFooter className="p-3 border-t bg-card/95 backdrop-blur-sm sticky bottom-0">
                       <div className="flex w-full items-center gap-2">
-                         <Skeleton className="h-10 flex-grow bg-muted rounded-md"/>
-                         <Skeleton className="h-10 w-10 bg-muted rounded-md"/>
+                         <Skeleton className="h-10 flex-grow bg-muted rounded-lg"/>
+                         <Skeleton className="h-10 w-10 bg-muted rounded-lg"/>
                       </div>
                  </CardFooter>
             </div>
@@ -365,10 +378,10 @@ export default function ChatPage() {
                 <AlertCircle className="h-12 w-12 mx-auto mb-4 text-destructive" />
                 <h2 className="text-2xl font-semibold mb-2">Chat Error</h2>
                 <p className="text-muted-foreground mb-6">{error}</p>
-                <Button asChild variant="outline">
-                     <Link href={`/character/${characterId}`}>
-                        <ArrowLeft className="mr-2 h-4 w-4"/> Back to Character
-                     </Link>
+                 <Button asChild variant="outline" onClick={() => router.back()}> {/* Go back on error */}
+                     {/* <Link href={`/character/${characterId}`}> */}
+                        <ArrowLeft className="mr-2 h-4 w-4"/> Go Back
+                     {/* </Link> */}
                 </Button>
             </div>
         );
@@ -381,9 +394,9 @@ export default function ChatPage() {
 
 
     return (
-        <div className="flex flex-col h-[calc(100vh-4rem)] bg-secondary/30"> {/* Slightly off-white background */}
+        <div className="flex flex-col h-[calc(100vh-4rem)] bg-gradient-to-br from-background via-secondary/20 to-background"> {/* Subtle gradient background */}
             {/* Chat Header */}
-            <CardHeader className="flex flex-row items-center gap-3 p-3 border-b bg-card sticky top-16 z-10 shadow-sm">
+            <CardHeader className="flex flex-row items-center gap-3 p-3 border-b bg-card/95 backdrop-blur-sm sticky top-16 z-10 shadow-sm">
                  <Button variant="ghost" size="icon" asChild className="mr-1 text-muted-foreground hover:text-foreground">
                       <Link href={`/character/${characterId}`} aria-label="Back to character">
                          <ArrowLeft />
@@ -391,25 +404,29 @@ export default function ChatPage() {
                  </Button>
                  {character && (
                      <>
-                        <Avatar className="h-10 w-10 border">
+                        <Avatar className="h-10 w-10 border-2 border-border/60 shadow-sm">
                             <AvatarImage src={character.image_url || `https://picsum.photos/seed/${character.id}/40/40`} alt={character.name} />
-                            <AvatarFallback className="bg-muted text-muted-foreground"><Bot size={18} /></AvatarFallback>
+                            <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20 text-primary font-medium"><Bot size={18} /></AvatarFallback>
                         </Avatar>
                         <div className="flex-grow">
-                            <CardTitle className="text-base font-semibold">{character.name}</CardTitle>
-                            {/* Optional: Add online status or typing indicator */}
-                            <p className="text-xs text-green-600">Online</p>
+                            <CardTitle className="text-base font-semibold line-clamp-1">{character.name}</CardTitle>
+                             {/* Optional: Online status or description */}
+                             <p className="text-xs text-muted-foreground line-clamp-1">
+                                {/* {character.description || 'Ready to chat'} */}
+                                <span className="text-green-600 mr-1">•</span> Online
+                            </p>
                         </div>
                         {/* Optional: Header actions (e.g., call button - disabled) */}
-                         <Button variant="ghost" size="icon" className="text-muted-foreground" disabled>
+                         <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary transition-colors" disabled>
                              <Phone size={18} />
+                             <span className="sr-only">Voice call (coming soon)</span>
                          </Button>
                      </>
                  )}
             </CardHeader>
 
             {/* Chat Messages Area */}
-            <ScrollArea className="flex-grow bg-background/80 backdrop-blur-sm" viewportRef={viewportRef} ref={scrollAreaRef} onScroll={handleScroll}>
+            <ScrollArea className="flex-grow" viewportRef={viewportRef} ref={scrollAreaRef} onScroll={handleScroll}>
                  <div className="p-4 space-y-6"> {/* Increased spacing */}
                      {/* Load More Spinner/Button */}
                       {loadingMessages ? (
@@ -418,13 +435,13 @@ export default function ChatPage() {
                          <>
                              {loadingMore ? (
                                 <div className="flex justify-center py-4"><Loader2 className="h-6 w-6 animate-spin text-primary"/></div>
-                             ) : hasMoreMessages && (
+                             ) : hasMoreMessages && conversationId && ( // Only show if conv exists
                                 <div className="text-center mb-4">
                                     <Button
                                         variant="outline"
                                         size="sm"
                                         onClick={() => fetchMessages(conversationId!, true)}
-                                        className="text-xs"
+                                        className="text-xs rounded-full shadow-sm hover:shadow-md"
                                     >
                                         Load Older Messages
                                     </Button>
@@ -439,7 +456,8 @@ export default function ChatPage() {
                              ) : messages.length === 0 && conversationId ? (
                                  <div className="text-center text-muted-foreground pt-10 flex flex-col items-center">
                                      <MessageSquare size={40} className="mb-3 opacity-50"/>
-                                     <p>No messages yet.</p>
+                                     <p>No messages yet in this conversation.</p>
+                                     <p className="text-sm mt-1">Say hello!</p>
                                  </div>
                              ) : (
                                 messages.map((msg, index) => (
@@ -452,21 +470,21 @@ export default function ChatPage() {
                                         style={{ animationDelay: `${Math.min(index * 50, 500)}ms` }} // Stagger animation slightly
                                     >
                                         {msg.sender !== 'user' && character && (
-                                            <Avatar className="h-8 w-8 self-end"> {/* Align avatar bottom */}
+                                            <Avatar className="h-8 w-8 self-end border shadow-sm"> {/* Align avatar bottom */}
                                                 <AvatarImage src={character.image_url || `https://picsum.photos/seed/${character.id}/32/32`} />
                                                 <AvatarFallback className="bg-muted text-muted-foreground"><Bot size={16} /></AvatarFallback>
                                             </Avatar>
                                         )}
                                         <div
                                             className={cn(
-                                                "max-w-[75%] rounded-lg px-3.5 py-2 shadow-sm relative",
+                                                "max-w-[75%] rounded-xl px-3.5 py-2 shadow-md relative", // Rounded-xl, slightly stronger shadow
                                                 msg.sender === 'user'
-                                                    ? 'bg-primary text-primary-foreground rounded-br-none' // Tail for user message
-                                                    : 'bg-card border rounded-bl-none', // Tail for AI message
+                                                    ? 'bg-gradient-to-br from-primary to-teal-500 text-primary-foreground rounded-br-none' // Gradient for user
+                                                    : 'bg-card border border-border/60 rounded-bl-none', // Card bg for AI
                                                 msg.id.startsWith('temp-') ? 'opacity-70' : ''
                                             )}
                                         >
-                                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                                            <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
                                             <p className={cn("text-[10px] mt-1.5 text-right",
                                                 msg.sender === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground',
                                             )}>
@@ -474,11 +492,11 @@ export default function ChatPage() {
                                             </p>
                                         </div>
                                          {msg.sender === 'user' && user && (
-                                            <Avatar className="h-8 w-8 self-end"> {/* Align avatar bottom */}
+                                            <Avatar className="h-8 w-8 self-end border shadow-sm"> {/* Align avatar bottom */}
                                                  {/* Add user avatar if available */}
                                                 {/* <AvatarImage src={user.avatarUrl} /> */}
-                                                <AvatarFallback className="bg-secondary text-secondary-foreground">
-                                                     {user.full_name ? user.full_name.charAt(0).toUpperCase() : <UserIcon size={16} />}
+                                                <AvatarFallback className="bg-secondary text-secondary-foreground font-medium">
+                                                     {user.full_name ? getInitials(user.full_name) : <UserIcon size={16} />}
                                                 </AvatarFallback>
                                             </Avatar>
                                         )}
@@ -492,7 +510,7 @@ export default function ChatPage() {
             </ScrollArea>
 
             {/* Message Input Area */}
-            <CardFooter className="p-3 border-t bg-card sticky bottom-0">
+            <CardFooter className="p-3 border-t bg-card/95 backdrop-blur-sm sticky bottom-0">
                 <form onSubmit={handleSendMessage} className="flex w-full items-center gap-2">
                     <Input
                         ref={inputRef}
@@ -501,10 +519,10 @@ export default function ChatPage() {
                         value={newMessage}
                         onChange={(e: ChangeEvent<HTMLInputElement>) => setNewMessage(e.target.value)}
                         disabled={sending || loadingMessages || loadingCharacter || authLoading || !user || !character}
-                        className="flex-grow h-10" // Ensure consistent height
+                        className="flex-grow h-10 rounded-full px-4 focus-visible:ring-primary/60" // Rounded full
                         autoComplete="off"
                     />
-                    <Button type="submit" size="icon" disabled={sending || !newMessage.trim() || loadingMessages || loadingCharacter || authLoading || !user || !character}>
+                    <Button type="submit" size="icon" disabled={sending || !newMessage.trim() || loadingMessages || loadingCharacter || authLoading || !user || !character} className="rounded-full w-10 h-10 flex-shrink-0 shadow-md hover:shadow-lg">
                         {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                         <span className="sr-only">Send message</span>
                     </Button>
@@ -513,3 +531,14 @@ export default function ChatPage() {
         </div>
     );
 }
+
+// Helper function to get initials (if not already imported/available)
+const getInitials = (name?: string | null): string => {
+     if (!name) return '?';
+     const names = name.trim().split(' ');
+     if (names.length === 1 && names[0]) return names[0].charAt(0).toUpperCase();
+     if (names.length > 1 && names[0] && names[names.length - 1]) {
+       return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
+     }
+     return '?';
+};
