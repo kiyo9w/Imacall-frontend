@@ -5,7 +5,7 @@
 @layer base {
   :root {
     /* Light Theme - Clean, Bright, Professional */
-    --background: 0 0% 98%; /* Slightly off-white */
+    --background: 0 0% 100%; /* Brighter White */
     --foreground: 240 10% 3.9%; /* Dark Gray */
 
     --card: 0 0% 100%; /* White */
@@ -42,7 +42,7 @@
     --chart-4: 40 90% 60%; /* Orange */
     --chart-5: 140 60% 50%; /* Green */
 
-    /* Sidebar - Light */
+    /* Sidebar - Light (If using a dedicated sidebar component) */
     --sidebar-background: 220 15% 98%; /* Very light gray/blue, slightly darker than page */
     --sidebar-foreground: 240 10% 3.9%;
     --sidebar-border: 220 10% 88%;
@@ -52,10 +52,10 @@
     --sidebar-accent-foreground: 190 85% 35%; /* Darker cyan for text on accent */
     --sidebar-ring: 190 80% 45%;
 
-    /* Animated Background Gradient Stops */
-    --gradient-start: hsl(220, 15%, 97%); /* Lighter */
-    --gradient-mid: hsl(190, 20%, 95%); /* Cyan hint */
-    --gradient-end: hsl(260, 20%, 97%); /* Violet hint */
+    /* Animated Background Gradient Stops - Light */
+    --gradient-start: hsl(220, 25%, 97%); /* Lighter, more subtle */
+    --gradient-mid: hsl(190, 30%, 96%); /* Subtler Cyan hint */
+    --gradient-end: hsl(260, 30%, 97%); /* Subtler Violet hint */
   }
 
   .dark {
@@ -114,21 +114,22 @@
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border transition-colors duration-150; /* Faster transition for base */
     /* Smooth scrolling behavior */
     scroll-behavior: smooth;
   }
   html {
-      /* Use transparent to allow body gradient to show through */
-      @apply bg-transparent;
-      min-height: 100%; /* Ensure covers full height */
+    /* Use transparent to allow body gradient to show through */
+    @apply bg-transparent;
+    min-height: 100%; /* Ensure covers full height */
+    /* Apply font variable here for global consistency */
+    font-family: var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   body {
     /* Apply the animated gradient here */
     @apply bg-gradient-body text-foreground animate-gradient-bg;
-    font-family: var(--font-inter), system-ui, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
     @apply overflow-x-hidden; /* Prevent horizontal scroll */
   }
 
@@ -148,10 +149,10 @@
   button, a {
      @apply transition-transform duration-150 ease-in-out;
      &:hover:not(:disabled) {
-        @apply brightness-110; /* Subtle brightness increase on hover */
+        @apply brightness-105 dark:brightness-110; /* Subtle brightness increase on hover */
      }
      &:active:not(:disabled) {
-       @apply scale-[0.97] brightness-95; /* Slightly more pronounced press effect */
+       @apply scale-[0.97] brightness-95 dark:brightness-90; /* Slightly more pronounced press effect */
      }
   }
   input, textarea, select {
@@ -161,9 +162,9 @@
   }
 
   /* Improve focus states for accessibility and visual feedback */
-   *:focus-visible {
-       @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
-   }
+  *:focus-visible {
+       @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background rounded-sm; /* Added rounding to focus */
+  }
 }
 
 /* Custom scrollbar styling */
@@ -180,37 +181,50 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted) / 0.8); /* Use muted color for thumb */
+    background: hsl(var(--muted-foreground) / 0.4); /* Use muted foreground, more transparent */
     border-radius: 10px;
     border: 2px solid transparent; /* No border needed with transparent track */
     background-clip: content-box; /* Keep border inside thumb */
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground) / 0.9);
+    background: hsl(var(--muted-foreground) / 0.6); /* Slightly less transparent on hover */
   }
 
   /* Firefox */
   * {
-    scrollbar-width: auto; /* Firefox default */
-    scrollbar-color: hsl(var(--muted) / 0.8) hsl(var(--background) / 0.5); /* Match thumb and track */
+    scrollbar-width: thin; /* Use 'thin' for a sleeker look in Firefox */
+    scrollbar-color: hsl(var(--muted-foreground) / 0.4) hsl(var(--background) / 0.5); /* Match thumb and track */
   }
 }
 
-/* Add keyframes for gradient background animation */
+/* Refine gradient background animation */
 @layer utilities {
     .bg-gradient-body {
-      background: linear-gradient(-45deg, hsl(var(--gradient-start)), hsl(var(--gradient-mid)), hsl(var(--gradient-end)), hsl(var(--gradient-mid)));
+      background: linear-gradient(-45deg,
+          hsl(var(--gradient-start)),
+          hsl(var(--gradient-mid)),
+          hsl(var(--gradient-end)),
+          hsl(var(--gradient-mid))
+      );
       background-size: 400% 400%;
     }
 
     .animate-gradient-bg {
-      animation: gradient-move 25s ease infinite;
+      animation: gradient-move 20s ease infinite; /* Slightly faster animation */
     }
 
     @keyframes gradient-move {
       0% { background-position: 0% 50%; }
       50% { background-position: 100% 50%; }
       100% { background-position: 0% 50%; }
+    }
+
+    /* Utility for subtle text shadow */
+    .text-shadow {
+        text-shadow: 1px 1px 3px hsl(var(--foreground) / 0.1);
+    }
+    .dark .text-shadow {
+        text-shadow: 1px 1px 5px hsl(var(--background) / 0.5);
     }
 }

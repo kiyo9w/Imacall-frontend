@@ -9,7 +9,8 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-xl border bg-card text-card-foreground shadow-md transition-shadow duration-300 hover:shadow-lg", // Adjusted radius, default shadow, hover effect
+      "rounded-xl border border-border/40 bg-card text-card-foreground shadow-lg transition-shadow duration-300 hover:shadow-xl", // Use border/40, increased rounding, default shadow, hover effect
+      "dark:border-border/30 dark:hover:border-border/50", // Dark mode adjustments
       className
     )}
     {...props}
@@ -23,7 +24,7 @@ const CardHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex flex-col space-y-2 p-6", className)} // Increased default space-y
+    className={cn("flex flex-col space-y-1.5 p-6", className)} // Consistent padding, reduced default space-y
     {...props}
   />
 ))
@@ -36,7 +37,7 @@ const CardTitle = React.forwardRef<
   <p // Use <p> by default
     ref={ref}
     className={cn(
-      "text-xl font-semibold leading-tight tracking-tight", // Adjusted leading
+      "text-xl font-semibold leading-none tracking-tight text-foreground", // Adjusted text size and leading
       className
     )}
     {...props}

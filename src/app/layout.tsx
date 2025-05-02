@@ -23,7 +23,9 @@ export default function RootLayout({
   return (
     // suppressHydrationWarning is needed for next-themes
     <html lang="en" className={cn(inter.variable, "h-full")} suppressHydrationWarning>
-       <body className={cn("font-sans flex flex-col min-h-full antialiased bg-gradient-body text-foreground")}> {/* Use body gradient and ensure min-h-full */}
+      <body className={cn(
+          "font-sans flex flex-col min-h-full antialiased bg-gradient-body text-foreground" // Use body gradient and ensure min-h-full
+        )}>
          <ThemeProvider
             attribute="class"
             defaultTheme="system"
@@ -48,5 +50,3 @@ export default function RootLayout({
     </html>
   );
 }
-
-    
