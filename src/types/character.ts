@@ -48,7 +48,7 @@ export interface CharacterCreate {
     language?: string | null; // Assuming language is part of create
 }
 
-// Matches CharacterUpdate schema from FastAPI (Admin)
+// Matches CharacterUpdateAdmin schema from FastAPI (used for both admin and potentially user edits on pending/rejected)
 export interface CharacterUpdateAdmin {
     name?: string | null;
     description?: string | null;
@@ -57,17 +57,12 @@ export interface CharacterUpdateAdmin {
     status?: CharacterStatus | null;
      // Add other updatable fields like category, tags, isPublic if part of the admin update schema
     category?: CharacterCategory | null;
-    tags?: string[] | null;
+    tags?: string[] | null; // Sending the full array or null/undefined
     scenario?: string | null;
     language?: string | null;
     isPublic?: boolean | null;
     adminFeedback?: string | null; // Assuming feedback is part of update
 }
-
-// Simplified CharacterUpdate for user edits (if applicable, otherwise use Admin version if users can edit pending/rejected)
-// If users can ONLY edit Draft/Rejected, the backend might need a separate endpoint or logic.
-// Assuming users can update fields on pending/rejected via a dedicated or the admin endpoint (with permission checks).
-export type CharacterUpdate = CharacterUpdateAdmin;
 
 
 // Data structure for user ratings/reviews - **Currently not supported by API**
@@ -149,5 +144,3 @@ export type ActiveProviderResponse = string;
 export interface SetActiveProviderResponse {
     message: string;
 }
-
-    

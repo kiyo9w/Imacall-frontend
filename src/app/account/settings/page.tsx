@@ -59,29 +59,33 @@ export default function SettingsPage() {
         setLoadingProviders(true);
         setErrorProviders(null);
         try {
-            const [availableRes, activeRes] = await Promise.all([
-                apiClient.get<string[]>('/config/ai/providers/available'),
-                apiClient.get<string>('/config/ai/providers/active'),
-            ]);
+            // Fetch available providers
+            const availableRes = await apiClient.get<string[]>('/config/ai/providers/available');
             setAvailableProviders(availableRes.data);
-            // The active provider response might be just the string name directly
+
+            // Fetch active provider
+            const activeRes = await apiClient.get<string>('/config/ai/providers/active');
+            // The active provider response is just the string name directly
             setActiveProvider(activeRes.data);
         } catch (err) {
             console.error("Error fetching AI provider config:", err);
-            setErrorProviders("Failed to load AI provider settings.");
+            let errorMsg = "Failed to load AI provider settings.";
             if (axios.isAxiosError(err) && (err.response?.status === 401 || err.response?.status === 403)) {
-                setErrorProviders("Unauthorized to fetch AI provider settings.");
+                errorMsg = "Unauthorized to fetch AI provider settings.";
             }
+            setErrorProviders(errorMsg);
         } finally {
             setLoadingProviders(false);
         }
-    }, [user?.is_superuser]);
+    }, [user?.is_superuser]); // Dependency on user.is_superuser
 
     useEffect(() => {
-        if (user?.is_superuser && !authLoading) {
+        // Fetch config only if user is loaded and is a superuser
+        if (!authLoading && user?.is_superuser) {
             fetchProviderConfig();
         }
-    }, [user, authLoading, fetchProviderConfig]);
+    }, [user, authLoading, fetchProviderConfig]); // Include fetchProviderConfig in dependencies
+
 
     // --- Handlers ---
     const handlePasswordChange: SubmitHandler<PasswordChangeInputs> = async (data) => {
@@ -127,7 +131,10 @@ export default function SettingsPage() {
         setUpdatingProvider(true);
         setErrorProviders(null);
         try {
-            const response = await apiClient.put<{ message: string }>(`/config/ai/providers/active?provider_name=${encodeURIComponent(newProvider)}`);
+            // Use PUT request with query parameter as per documentation
+             const response = await apiClient.put<{ message: string }>(`/config/ai/providers/active`, null, {
+                params: { provider_name: newProvider }
+             });
             setActiveProvider(newProvider); // Update local state on success
             toast({
                 title: "AI Provider Updated",
@@ -139,10 +146,13 @@ export default function SettingsPage() {
             let errorMsg = "Failed to update AI provider.";
              if (axios.isAxiosError(err) && err.response) {
                 if (err.response.status === 400) {
-                     errorMsg = err.response.data?.detail || `Provider '${newProvider}' is not available or failed to activate.`;
+                     // Backend returns 400 if provider is not available
+                     errorMsg = err.response.data?.detail || `Provider '${newProvider}' is not available or failed to activate. Ensure API keys are set.`;
                  } else if (err.response.status === 401 || err.response.status === 403) {
                     errorMsg = "Unauthorized to change AI provider.";
-                }
+                 } else if (err.response.status === 422) {
+                    errorMsg = "Invalid request parameter.";
+                 }
              }
             setErrorProviders(errorMsg);
             toast({ title: "Update Failed", description: errorMsg, variant: "destructive" });
@@ -267,30 +277,32 @@ export default function SettingsPage() {
                                 <AlertCircle className="h-4 w-4" />
                                 <AlertTitle>Provider Error</AlertTitle>
                                 <AlertDescription>{errorProviders}</AlertDescription>
+                                 <Button onClick={fetchProviderConfig} variant="secondary" size="sm" className="mt-2">Retry</Button>
                             </Alert>
                         )}
                          {loadingProviders ? (
                              <div className="space-y-4">
                                 <Skeleton className="h-5 w-32 bg-muted" />
-                                <Skeleton className="h-10 w-full bg-muted" />
-                                <Skeleton className="h-9 w-36 bg-muted" />
+                                <Skeleton className="h-10 w-full md:w-[250px] bg-muted" />
+                                <Skeleton className="h-4 w-48 bg-muted" />
                             </div>
                          ) : (
-                             <div className="space-y-4">
+                             <div className="space-y-4 max-w-md">
                                  <div className="space-y-2">
-                                     <Label htmlFor="aiProvider">Active AI Provider</Label>
+                                     <Label htmlFor="aiProvider" className="text-base">Active AI Provider</Label>
                                      <Select
                                          value={activeProvider || ''}
                                          onValueChange={handleProviderChange}
                                          disabled={loadingProviders || updatingProvider || availableProviders.length === 0}
                                      >
-                                         <SelectTrigger id="aiProvider" className="w-full md:w-[250px]">
+                                         <SelectTrigger id="aiProvider" className="w-full md:w-[250px] text-base py-2.5">
                                              <SelectValue placeholder="Select Provider" />
                                          </SelectTrigger>
                                          <SelectContent>
                                              {availableProviders.length > 0 ? (
                                                  availableProviders.map(provider => (
-                                                     <SelectItem key={provider} value={provider}>
+                                                     <SelectItem key={provider} value={provider} className="text-base">
+                                                         {/* Capitalize provider name */}
                                                          {provider.charAt(0).toUpperCase() + provider.slice(1)}
                                                      </SelectItem>
                                                  ))
@@ -299,10 +311,13 @@ export default function SettingsPage() {
                                              )}
                                          </SelectContent>
                                      </Select>
-                                      {updatingProvider && <Loader2 className="inline-block ml-2 h-4 w-4 animate-spin text-muted-foreground" />}
+                                      {updatingProvider && <Loader2 className="inline-block ml-3 h-5 w-5 animate-spin text-muted-foreground" />}
                                  </div>
+                                 <p className="text-sm text-muted-foreground pt-1">
+                                     Available providers: {availableProviders.length > 0 ? availableProviders.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(', ') : 'None'}
+                                 </p>
                                  <p className="text-xs text-muted-foreground">
-                                     Available providers: {availableProviders.length > 0 ? availableProviders.join(', ') : 'None configured or API keys missing.'}
+                                      Ensure the corresponding API keys are set in the backend environment for providers to be available. Changes take effect immediately.
                                  </p>
                              </div>
                          )}
@@ -379,5 +394,3 @@ export default function SettingsPage() {
         </div>
     );
 }
-
-    

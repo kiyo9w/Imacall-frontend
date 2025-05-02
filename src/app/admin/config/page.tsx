@@ -54,7 +54,10 @@ export default function AdminConfigPage() {
         setUpdating(true);
         setError(null);
         try {
-            const response = await apiClient.put<{ message: string }>(`/config/ai/providers/active?provider_name=${encodeURIComponent(newProvider)}`);
+            // Use PUT request with query parameter as per new API documentation
+            const response = await apiClient.put<{ message: string }>(`/config/ai/providers/active`, null, {
+                 params: { provider_name: newProvider }
+            });
             setActiveProvider(newProvider); // Update local state on success
             toast({
                 title: "AI Provider Updated",
@@ -66,10 +69,14 @@ export default function AdminConfigPage() {
             let errorMsg = "Failed to update AI provider.";
              if (axios.isAxiosError(err) && err.response) {
                 if (err.response.status === 400) {
+                    // Backend returns 400 if provider is not available
                      errorMsg = err.response.data?.detail || `Provider '${newProvider}' is not available or failed to activate. Ensure API keys are set.`;
                  } else if (err.response.status === 401 || err.response.status === 403) {
                     errorMsg = "Unauthorized to change AI provider.";
-                }
+                 } else if (err.response.status === 422) {
+                    // Backend uses 422 for validation errors (e.g., missing query param)
+                    errorMsg = "Invalid request parameter.";
+                 }
              }
             setError(errorMsg);
             toast({ title: "Update Failed", description: errorMsg, variant: "destructive" });
@@ -82,9 +89,10 @@ export default function AdminConfigPage() {
          <div className="space-y-6">
             <div className="space-y-2">
                 <Skeleton className="h-5 w-32 bg-muted" />
-                <Skeleton className="h-10 w-full md:w-[250px] bg-muted" />
+                <Skeleton className="h-10 w-full md:w-[250px] bg-muted rounded-lg" />
             </div>
-             <Skeleton className="h-4 w-48 bg-muted" />
+             <Skeleton className="h-4 w-48 bg-muted rounded" />
+             <Skeleton className="h-4 w-64 bg-muted rounded" />
         </div>
     );
 
@@ -117,7 +125,7 @@ export default function AdminConfigPage() {
                                  onValueChange={handleProviderChange}
                                  disabled={loading || updating || availableProviders.length === 0}
                              >
-                                 <SelectTrigger id="aiProvider" className="w-full md:w-[300px] text-base py-2.5">
+                                 <SelectTrigger id="aiProvider" className="w-full md:w-[300px] text-base py-2.5 rounded-lg">
                                      <SelectValue placeholder="Select Provider" />
                                  </SelectTrigger>
                                  <SelectContent>
@@ -145,11 +153,9 @@ export default function AdminConfigPage() {
                  )}
             </CardContent>
              {/* Optional Footer for save button if using a form approach */}
-             {/* <CardFooter>
+             {/* <CardFooter className="border-t border-border/40 pt-4">
                  <Button disabled={loading || updating}>Save Changes</Button>
              </CardFooter> */}
         </Card>
     );
 }
-
-    
