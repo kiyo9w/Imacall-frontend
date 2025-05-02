@@ -1,5 +1,5 @@
 // Represents the overall status of a character
-export type CharacterStatus = 'Pending' | 'Approved' | 'Rejected';
+export type CharacterStatus = 'Pending' | 'Approved' | 'Rejected'; // Match API schema exactly ('Pending', not 'pending')
 
 // Categories might be handled differently in FastAPI, adjust if needed
 export enum CharacterCategory {
@@ -24,14 +24,14 @@ export interface CharacterPublic {
     status: CharacterStatus;
     creator_id: string; // UUID, renamed from userId
     // Add other fields from the API schema as needed
-    // e.g., category, tags, etc. if they are part of CharacterPublic
-    category?: CharacterCategory | null; // Assuming category is returned
-    tags?: string[] | null; // Assuming tags are returned as an array
+    category?: CharacterCategory | null;
+    tags?: string[] | null;
     averageRating?: number | null; // Assuming these are returned
     ratingCount?: number | null; // Assuming these are returned
     isPublic?: boolean | null; // Assuming this is returned
     createdAt?: string | null; // ISO Date string
     updatedAt?: string | null; // ISO Date string
+    adminFeedback?: string | null; // Include if API provides it
 }
 
 
@@ -70,14 +70,14 @@ export interface CharacterUpdateAdmin {
 export type CharacterUpdate = CharacterUpdateAdmin;
 
 
-// Data structure for user ratings/reviews (V2) - Adapt if API schema differs
-// Assuming a similar structure for now, adjust based on actual API.
+// Data structure for user ratings/reviews - **Currently not supported by API**
+// Keep for potential future implementation, adjust based on actual future API schema.
 export interface CharacterReview {
-    id: string; // Firestore document ID or API equivalent (e.g., UUID)
+    id: string; // Review ID (e.g., UUID from API)
     characterId: string; // ID of the character being reviewed
     userId: string; // ID of the user submitting the review
-    displayName?: string | null; // User's display name at the time of review
-    userAvatarUrl?: string | null; // User's avatar URL at the time of review
+    displayName?: string | null; // User's display name (from UserPublic)
+    userAvatarUrl?: string | null; // **User avatar URL is not available from current UserPublic**
     rating: number; // Star rating (e.g., 1-5)
     reviewText?: string | null; // Optional text comment
     createdAt: string; // ISO Date string from API
@@ -136,3 +136,18 @@ export interface PaginatedResponse<T> {
     data: T[];
     count: number;
 }
+
+// --- NEW CONFIG TYPES ---
+
+// Response for GET /config/ai/providers/available
+export type AvailableProvidersResponse = string[];
+
+// Response for GET /config/ai/providers/active
+export type ActiveProviderResponse = string;
+
+// Response for PUT /config/ai/providers/active
+export interface SetActiveProviderResponse {
+    message: string;
+}
+
+    

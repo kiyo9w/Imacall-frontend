@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { collection, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+// import { collection, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore'; Removed Firebase imports
+// import { db } from '@/lib/firebase'; Removed Firebase imports
 import { CharacterReview } from '@/types/character';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -63,49 +63,62 @@ export function ReviewForm({ characterId, userId, onReviewSubmitted }: ReviewFor
       return;
     }
 
-    try {
-      const reviewData: Omit<CharacterReview, 'id' | 'createdAt'> = {
-        characterId: characterId,
-        userId: userId,
-        displayName: user?.displayName || 'Anonymous', // Use current display name
-        userAvatarUrl: user?.photoURL || undefined, // Use current avatar
-        rating: data.rating,
-        reviewText: data.reviewText || '',
-        createdAt: serverTimestamp() as Timestamp, // Use server timestamp for consistency
-      };
-
-      const docRef = await addDoc(collection(db, 'reviews'), reviewData);
-
-       // Construct the new review object for the callback, including the server-generated timestamp placeholder
-       // The parent component will handle the display logic, potentially showing "just now"
-       const newReviewForCallback: CharacterReview = {
-           id: docRef.id,
-           ...reviewData,
-           createdAt: Timestamp.now() // Use client timestamp for immediate feedback
-       };
-      onReviewSubmitted(newReviewForCallback);
-
-      toast({
-        title: "Review Submitted",
-        description: "Thank you for your feedback!",
-      });
-
-       // Reset form (optional)
-       setValue('rating', 0);
-       setValue('reviewText', '');
-
-
-    } catch (err) {
-      console.error("Error submitting review:", err);
-      setError("Failed to submit your review. Please try again.");
-      toast({
-        title: "Submission Failed",
-        description: "Could not submit your review.",
+    // --- Firebase code removed ---
+    // Replace with API call if/when review submission is supported by the backend
+    setError("Review submission is not currently supported by the API.");
+    toast({
+        title: "Feature Unavailable",
+        description: "Submitting reviews is not yet implemented in the backend.",
         variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+    });
+    setLoading(false);
+    return; // Prevent further execution
+
+    // try {
+    //   const reviewData: Omit<CharacterReview, 'id' | 'createdAt'> = {
+    //     characterId: characterId,
+    //     userId: userId,
+    //     displayName: user?.full_name || 'Anonymous', // Use full_name from UserPublic
+    //     userAvatarUrl: undefined, // API doesn't provide avatar URL for user
+    //     rating: data.rating,
+    //     reviewText: data.reviewText || '',
+    //     // createdAt needs to be handled by the API on submission
+    //   };
+
+    //   // --- Replace with API call ---
+    //   // Example: const response = await apiClient.post(`/characters/${characterId}/reviews`, reviewData);
+    //   // const newReviewFromApi = response.data;
+    //   // ---
+
+    //   // Construct the new review object for the callback
+    //   const newReviewForCallback: CharacterReview = {
+    //       // id: newReviewFromApi.id,
+    //       id: `temp-${Date.now()}`, // Temporary ID for callback
+    //       ...reviewData,
+    //       createdAt: new Date().toISOString() // Use client timestamp for immediate feedback
+    //   };
+    //   onReviewSubmitted(newReviewForCallback);
+
+    //   toast({
+    //     title: "Review Submitted",
+    //     description: "Thank you for your feedback!",
+    //   });
+
+    //   // Reset form (optional)
+    //   setValue('rating', 0);
+    //   setValue('reviewText', '');
+
+    // } catch (err) {
+    //   console.error("Error submitting review:", err);
+    //   setError("Failed to submit your review. Please try again.");
+    //   toast({
+    //     title: "Submission Failed",
+    //     description: "Could not submit your review.",
+    //     variant: "destructive",
+    //   });
+    // } finally {
+    //   setLoading(false);
+    // }
   };
 
   return (
@@ -147,5 +160,4 @@ export function ReviewForm({ characterId, userId, onReviewSubmitted }: ReviewFor
   );
 }
 
-// Import AlertCircle if needed
-import { AlertCircle } from 'lucide-react';
+    

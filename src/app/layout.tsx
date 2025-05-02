@@ -4,7 +4,9 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { Header } from '@/components/layout/Header';
 import { AuthProvider } from '@/contexts/AuthContext';
+// import { FirebaseProvider } from '@/contexts/FirebaseContext'; // Removed FirebaseProvider import
 import { ThemeProvider } from '@/components/theme-provider'; // Import ThemeProvider
+import { cn } from '@/lib/utils';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' }); // Configure Inter font
 
@@ -20,14 +22,15 @@ export default function RootLayout({
 }>) {
   return (
     // suppressHydrationWarning is needed for next-themes
-    <html lang="en" className={inter.variable} suppressHydrationWarning>
-       <body className={`font-sans flex flex-col min-h-screen antialiased bg-gradient-body text-foreground`}> {/* Use body gradient */}
+    <html lang="en" className={cn(inter.variable, "h-full")} suppressHydrationWarning>
+       <body className={cn("font-sans flex flex-col min-h-full antialiased bg-gradient-body text-foreground")}> {/* Use body gradient and ensure min-h-full */}
          <ThemeProvider
             attribute="class"
             defaultTheme="system"
             enableSystem
             disableTransitionOnChange
          >
+            {/* Removed FirebaseProvider wrapper */}
              <AuthProvider> {/* Wrap with AuthProvider */}
                <Header />
                {/* flex-1 ensures main content pushes footer down */}
@@ -35,9 +38,9 @@ export default function RootLayout({
                  {children}
                </main>
                {/* Optional: Add a simple footer */}
-               <footer className="py-6 text-center text-xs text-muted-foreground border-t bg-card/80 backdrop-blur-sm"> {/* Slightly styled footer */}
-                 © {new Date().getFullYear()} Imacall. All rights reserved.
-               </footer>
+                <footer className="py-4 text-center text-xs text-muted-foreground border-t border-border/40 bg-card/90 backdrop-blur-sm mt-auto"> {/* Slightly styled footer */}
+                  © {new Date().getFullYear()} Imacall. All rights reserved.
+                </footer>
                <Toaster />
              </AuthProvider>
          </ThemeProvider>
@@ -45,3 +48,5 @@ export default function RootLayout({
     </html>
   );
 }
+
+    
