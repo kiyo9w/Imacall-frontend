@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext'; // Import the new AuthContext
@@ -23,7 +23,8 @@ const registerSchema = z.object({
 
 type RegisterFormInputs = z.infer<typeof registerSchema>;
 
-export default function RegisterPage() {
+// Extracted content into a new component
+function RegisterContent() {
   const [error, setError] = useState<string | null>(null);
   const { register: registerUser, loading } = useAuth(); // Use register function and loading state from context
   const router = useRouter();
@@ -132,5 +133,14 @@ export default function RegisterPage() {
         </CardFooter>
       </Card>
     </div>
+  );
+}
+
+// The main page component now wraps the content in Suspense
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}> {/* Or a more sophisticated loader */}
+      <RegisterContent />
+    </Suspense>
   );
 }
