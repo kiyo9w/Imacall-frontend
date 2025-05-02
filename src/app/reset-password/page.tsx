@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm, SubmitHandler } from 'react-hook-form';
@@ -26,7 +26,8 @@ const resetPasswordSchema = z.object({
 
 type ResetPasswordInputs = z.infer<typeof resetPasswordSchema>;
 
-export default function ResetPasswordPage() {
+// Extracted content into a new component
+function ResetPasswordContent() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -186,5 +187,14 @@ export default function ResetPasswordPage() {
          </CardFooter>
       </Card>
     </div>
+  );
+}
+
+// The main page component now wraps the content in Suspense
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}> {/* Or a more sophisticated loader */}
+      <ResetPasswordContent />
+    </Suspense>
   );
 }
