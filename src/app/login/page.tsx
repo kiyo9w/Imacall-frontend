@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext'; // Import the new AuthContext
@@ -11,7 +11,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { LogIn, AlertCircle, UserPlus, Loader2 } from 'lucide-react'; // Added Loader2
 
-export default function LoginPage() {
+// Extracted content into a new component
+function LoginContent() {
   const [error, setError] = useState<string | null>(null);
   const { login, loading } = useAuth(); // Use login function and loading state from context
   const router = useRouter();
@@ -105,5 +106,14 @@ export default function LoginPage() {
         </CardFooter>
       </Card>
     </div>
+  );
+}
+
+// The main page component now wraps the content in Suspense
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}> {/* Or a more sophisticated loader */}
+      <LoginContent />
+    </Suspense>
   );
 }
