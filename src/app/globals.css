@@ -14,101 +14,109 @@
     --popover: 0 0% 100%; /* White */
     --popover-foreground: 240 10% 3.9%; /* Dark Gray */
 
-    --primary: 190 85% 40%; /* Vibrant Cyan/Teal */
+    --primary: 180 100% 35%; /* Darker Teal */
     --primary-foreground: 0 0% 99%; /* Almost White */
 
-    --secondary: 220 10% 96%; /* Very Light Gray/Blue */
+    --secondary: 210 30% 96%; /* Very Light Gray/Blue */
     --secondary-foreground: 240 6% 10%; /* Dark Gray */
 
-    --muted: 220 10% 91%; /* Light Gray/Blue */
+    --muted: 210 30% 91%; /* Light Gray/Blue */
     --muted-foreground: 240 4% 46%; /* Medium Gray */
 
-    --accent: 260 80% 65%; /* Soft Violet */
+    --accent: 340 95% 60%; /* Coral */
     --accent-foreground: 0 0% 99%; /* Almost White */
 
     --destructive: 0 75% 60%; /* Clear Red */
     --destructive-foreground: 0 0% 99%; /* Almost White */
 
-    --border: 220 10% 88%; /* Light Gray Border */
-    --input: 220 10% 94%; /* Input background slightly off-white */
-    --ring: 190 80% 45%; /* Slightly darker cyan for focus rings */
+    --border: 210 20% 88%; /* Light Gray Border */
+    --input: 210 30% 97%; /* Input background slightly off-white */
+    --ring: 180 90% 40%; /* Slightly darker teal for focus rings */
 
     --radius: 0.75rem; /* Slightly larger radius for modern feel */
 
     /* Chart colors */
-    --chart-1: 190 76% 35%; /* Cyan */
-    --chart-2: 260 70% 60%; /* Violet */
+    --chart-1: 180 76% 35%; /* Teal */
+    --chart-2: 340 80% 65%; /* Coral */
     --chart-3: 220 70% 55%; /* Blue */
     --chart-4: 40 90% 60%; /* Orange */
     --chart-5: 140 60% 50%; /* Green */
 
-    /* Sidebar - Light (If using a dedicated sidebar component) */
-    --sidebar-background: 220 15% 98%; /* Very light gray/blue, slightly darker than page */
+    /* Sidebar - Light */
+    --sidebar-background: 210 35% 98%; /* Very light gray/blue, slightly darker than page */
     --sidebar-foreground: 240 10% 3.9%;
-    --sidebar-border: 220 10% 88%;
-    --sidebar-primary: 190 85% 40%;
+    --sidebar-border: 210 20% 88%;
+    --sidebar-primary: 180 100% 35%;
     --sidebar-primary-foreground: 0 0% 99%;
-    --sidebar-accent: 190 20% 92%; /* Very light cyan accent */
-    --sidebar-accent-foreground: 190 85% 35%; /* Darker cyan for text on accent */
-    --sidebar-ring: 190 80% 45%;
+    --sidebar-accent: 180 20% 92%; /* Very light teal accent */
+    --sidebar-accent-foreground: 180 85% 35%; /* Darker teal for text on accent */
+    --sidebar-ring: 180 90% 40%;
 
     /* Animated Background Gradient Stops - Light */
-    --gradient-start: hsl(220, 25%, 97%); /* Lighter, more subtle */
-    --gradient-mid: hsl(190, 30%, 96%); /* Subtler Cyan hint */
-    --gradient-end: hsl(260, 30%, 97%); /* Subtler Violet hint */
+    --gradient-start: hsl(210, 35%, 98%); /* Lighter, more subtle blue-gray */
+    --gradient-mid: hsl(180, 25%, 96%); /* Subtler Teal hint */
+    --gradient-end: hsl(0, 10%, 98%); /* Hint of warm gray */
+
+    /* Noise Texture */
+    --noise-url: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    --noise-opacity: 0.02;
+
   }
 
   .dark {
     /* Dark Theme - Modern, Sleek, Techy */
-    --background: 240 10% 6%; /* Very Dark Blue/Gray */
+    --background: 225 15% 8%; /* Very Dark Blue/Gray */
     --foreground: 210 20% 98%; /* Almost White */
 
-    --card: 240 8% 10%; /* Slightly Lighter Dark Blue/Gray */
+    --card: 225 12% 12%; /* Slightly Lighter Dark Blue/Gray */
     --card-foreground: 210 20% 98%;
 
-    --popover: 240 8% 10%;
+    --popover: 225 10% 10%; /* Darker Popover */
     --popover-foreground: 210 20% 98%;
 
-    --primary: 190 80% 55%; /* Brighter Cyan/Teal */
-    --primary-foreground: 240 10% 5%; /* Very Dark Text */
+    --primary: 180 90% 50%; /* Brighter Teal */
+    --primary-foreground: 225 10% 5%; /* Very Dark Text */
 
-    --secondary: 240 6% 15%; /* Darker Gray/Blue */
+    --secondary: 225 10% 18%; /* Darker Gray/Blue */
     --secondary-foreground: 210 15% 90%; /* Lighter Gray Text */
 
-    --muted: 240 6% 15%;
+    --muted: 225 10% 18%;
     --muted-foreground: 210 10% 65%; /* Medium Gray Text */
 
-    --accent: 260 75% 70%; /* Brighter Violet */
-    --accent-foreground: 240 10% 5%; /* Very Dark Text */
+    --accent: 16 95% 58%; /* Vibrant Coral */
+    --accent-foreground: 0 0% 5%; /* Very Dark Text */
 
     --destructive: 0 70% 65%; /* Slightly Brighter Red */
     --destructive-foreground: 0 0% 99%;
 
-    --border: 240 5% 20%; /* Darker Border */
-    --input: 240 5% 18%; /* Darker Input Background */
-    --ring: 190 75% 60%; /* Brighter Cyan Ring */
+    --border: 225 8% 25%; /* Darker Border */
+    --input: 225 8% 20%; /* Darker Input Background */
+    --ring: 180 85% 55%; /* Brighter Teal Ring */
 
     /* Chart colors */
-    --chart-1: 190 70% 50%;
-    --chart-2: 260 65% 65%;
+    --chart-1: 180 70% 50%;
+    --chart-2: 16 80% 65%; /* Coral */
     --chart-3: 220 65% 60%;
     --chart-4: 40 80% 65%;
     --chart-5: 140 55% 55%;
 
     /* Sidebar - Dark */
-    --sidebar-background: 240 8% 8%; /* Very dark base */
+    --sidebar-background: 225 10% 10%; /* Very dark base */
     --sidebar-foreground: 210 20% 98%;
-    --sidebar-border: 240 5% 20%;
-    --sidebar-primary: 190 80% 55%;
-    --sidebar-primary-foreground: 240 10% 5%;
-    --sidebar-accent: 190 15% 18%; /* Dark cyan accent */
-    --sidebar-accent-foreground: 190 75% 60%; /* Brighter cyan text on accent */
-    --sidebar-ring: 190 75% 60%;
+    --sidebar-border: 225 8% 25%;
+    --sidebar-primary: 180 90% 50%;
+    --sidebar-primary-foreground: 225 10% 5%;
+    --sidebar-accent: 180 15% 20%; /* Dark teal accent */
+    --sidebar-accent-foreground: 180 85% 60%; /* Brighter teal text on accent */
+    --sidebar-ring: 180 85% 55%;
 
     /* Animated Background Gradient Stops - Dark */
-    --gradient-start: hsl(240, 10%, 8%); /* Darker base */
-    --gradient-mid: hsl(190, 30%, 12%); /* Dark Cyan hint */
-    --gradient-end: hsl(260, 25%, 10%); /* Dark Violet hint */
+    --gradient-start: hsl(225, 15%, 10%); /* Darker base */
+    --gradient-mid: hsl(180, 25%, 15%); /* Dark Teal hint */
+    --gradient-end: hsl(16, 10%, 12%); /* Hint of warm dark */
+
+    /* Noise Texture */
+    --noise-opacity: 0.015; /* Less noise in dark mode */
   }
 }
 
@@ -122,7 +130,6 @@
     /* Use transparent to allow body gradient to show through */
     @apply bg-transparent;
     min-height: 100%; /* Ensure covers full height */
-    /* Apply font variable here for global consistency */
     font-family: var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -131,7 +138,23 @@
     /* Apply the animated gradient here */
     @apply bg-gradient-body text-foreground animate-gradient-bg;
     @apply overflow-x-hidden; /* Prevent horizontal scroll */
+     /* Add noise texture overlay */
+    @apply relative; /* Needed for pseudo-element */
   }
+
+   body::before {
+       content: "";
+       position: fixed; /* Covers entire viewport */
+       top: 0;
+       left: 0;
+       right: 0;
+       bottom: 0;
+       background-image: var(--noise-url);
+       opacity: var(--noise-opacity);
+       pointer-events: none; /* Don't interfere with clicks */
+       z-index: 1000; /* Above background, below content */
+       animation: noise-pan 15s linear infinite alternate; /* Subtle movement */
+   }
 
   h1, h2, h3, h4, h5, h6 {
     @apply font-bold tracking-tight text-foreground; /* Use bold for stronger hierarchy */
@@ -165,40 +188,47 @@
   *:focus-visible {
        @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background rounded-sm; /* Added rounding to focus */
   }
+
+  /* Text shadow utilities */
+  .text-shadow { text-shadow: 1px 1px 3px hsl(var(--foreground) / 0.1); }
+  .text-shadow-md { text-shadow: 0 2px 5px hsl(var(--foreground) / 0.15); }
+  .text-shadow-lg { text-shadow: 0 4px 10px hsl(var(--foreground) / 0.2); }
+  .dark .text-shadow { text-shadow: 1px 1px 5px hsl(var(--background) / 0.5); }
+  .dark .text-shadow-md { text-shadow: 0 2px 8px hsl(var(--background) / 0.6); }
+  .dark .text-shadow-lg { text-shadow: 0 4px 15px hsl(var(--background) / 0.7); }
 }
 
 /* Custom scrollbar styling */
 @layer utilities {
   /* Webkit */
   ::-webkit-scrollbar {
-    width: 10px; /* Slightly wider scrollbar */
-    height: 10px;
+    width: 8px; /* Narrower scrollbar */
+    height: 8px;
   }
 
   ::-webkit-scrollbar-track {
-    background: hsl(var(--background) / 0.5); /* Semi-transparent track */
-    border-radius: 10px;
+    background: transparent; /* Fully transparent track */
   }
 
   ::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted-foreground) / 0.4); /* Use muted foreground, more transparent */
+    background: hsl(var(--muted-foreground) / 0.3); /* More transparent thumb */
     border-radius: 10px;
-    border: 2px solid transparent; /* No border needed with transparent track */
-    background-clip: content-box; /* Keep border inside thumb */
+    border: 2px solid transparent;
+    background-clip: content-box;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground) / 0.6); /* Slightly less transparent on hover */
+    background: hsl(var(--muted-foreground) / 0.5);
   }
 
   /* Firefox */
   * {
-    scrollbar-width: thin; /* Use 'thin' for a sleeker look in Firefox */
-    scrollbar-color: hsl(var(--muted-foreground) / 0.4) hsl(var(--background) / 0.5); /* Match thumb and track */
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent; /* Thumb and transparent track */
   }
 }
 
-/* Refine gradient background animation */
+/* Refined gradient background animation and keyframes */
 @layer utilities {
     .bg-gradient-body {
       background: linear-gradient(-45deg,
@@ -207,24 +237,34 @@
           hsl(var(--gradient-end)),
           hsl(var(--gradient-mid))
       );
-      background-size: 400% 400%;
+      background-size: 600% 600%; /* Larger size for smoother transition */
     }
 
     .animate-gradient-bg {
-      animation: gradient-move 20s ease infinite; /* Slightly faster animation */
+      animation: gradient-move 30s ease infinite; /* Slower, smoother animation */
     }
 
     @keyframes gradient-move {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
+       0% { background-position: 0% 50%; }
+       50% { background-position: 100% 50%; }
+       100% { background-position: 0% 50%; }
     }
 
-    /* Utility for subtle text shadow */
-    .text-shadow {
-        text-shadow: 1px 1px 3px hsl(var(--foreground) / 0.1);
-    }
-    .dark .text-shadow {
-        text-shadow: 1px 1px 5px hsl(var(--background) / 0.5);
-    }
+     /* Subtle panning animation for noise */
+     @keyframes noise-pan {
+       0%, 100% { transform: translateX(0) translateY(0); }
+       25% { transform: translateX(-5px) translateY(5px); }
+       50% { transform: translateX(5px) translateY(-5px); }
+       75% { transform: translateX(-3px) translateY(3px); }
+     }
+
+     /* Floating animation for showcase cards */
+     @keyframes float {
+         0%, 100% { transform: translateY(0px) rotate(var(--initial-rotate, 0deg)); }
+         50% { transform: translateY(-12px) rotate(calc(var(--initial-rotate, 0deg) + 1.5deg)); } /* Adjusted lift and rotation */
+     }
+     .animate-float {
+         animation: float 6s ease-in-out infinite;
+         /* CSS variable for initial rotation will be set inline */
+     }
 }
